@@ -4,12 +4,20 @@
     "description": "Notifies the user of excessive usage of PII in a text field. Provides a severity indicator.",
     "version": "0.1",
 
-    "permissions": ["webRequestBlocking"],
-    "content_scripts": [{
-        "matches": ["<all_urls>"],
-        "js": ["build/client.js"]
-    }],
+    "permissions": [
+        "tabs",
+        "activeTab",
+        "<all_urls>",
+        "webNavigation",
+        "webRequestBlocking"
+    ],
     "background": {
         "scripts": ["build/service.js"]
-    }
+    },
+    "content_scripts": [{
+        "matches": ["<all_urls>"],
+        "all_frames": true,
+        "js": ["build/content.js"],
+        "run_at": "document_start"
+    }]
 }

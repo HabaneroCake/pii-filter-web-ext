@@ -4,18 +4,18 @@ const fs = require('fs');
 
 browserify()
     .add('src/service.ts')
-    .plugin(tsify, { noImplicitAny: true })
+    .plugin(tsify, { noImplicitAny: true, experimentalDecorators: true, target: 'es5'})
     .bundle()
     .on('error', error => {
-        console.error(error.toString());
+        throw new Error(error.toString());
     })
     .pipe(fs.createWriteStream('./build/service.js'));
 
 browserify()
-    .add('src/client.ts')
-    .plugin(tsify, { noImplicitAny: true })
+    .add('src/content.ts')
+    .plugin(tsify, { noImplicitAny: true, experimentalDecorators: true, target: 'es5'})
     .bundle()
     .on('error', error => {
-        console.error(error.toString());
+        throw new Error(error.toString());
     })
-    .pipe(fs.createWriteStream('./build/client.js'));
+    .pipe(fs.createWriteStream('./build/content.js'));
