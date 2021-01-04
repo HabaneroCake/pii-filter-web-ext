@@ -5,10 +5,13 @@ import { Rect } from '../common/rect';
 
 // TODO: add tracking of change in size
 // TODO: should this only be a base class (managing correct pos/size deduction) which can be extended?
+// TODO: clean up shadow root stuff (move to other class)
 
 export class DOMRectHighlight
-{
-    private div: HTMLDivElement;
+{ 
+    private root_div:   HTMLDivElement;
+    private shadow:     ShadowRoot;
+    private div:        HTMLDivElement;
 
     /**
     * creates an overlay over / around the provided element
@@ -22,8 +25,12 @@ export class DOMRectHighlight
     ) {
         // let range: Range = top_doc.createRange();
         // range.selectNode(element);
+        // this.shadow = attachShadow
+        this.root_div = this.document.createElement("div");
+        this.shadow =   this.root_div.attachShadow({mode: 'closed'});
+        this.div =      this.document.createElement("div");
 
-        this.div = this.document.createElement("div");
+        this.shadow.appendChild(this.div);
         // console.log("styling", element);
 
         // let bounding_rect: DOMRect = range.getBoundingClientRect();
@@ -48,7 +55,7 @@ export class DOMRectHighlight
 
         this.div.style.pointerEvents =      'none';
 
-        document.body.insertBefore(this.div, this.document.body.childNodes[0]);
+        document.body.insertBefore(this.root_div, this.document.body.childNodes[0]);
     }
     /**
      * set the visibility
@@ -70,7 +77,7 @@ export class DOMRectHighlight
     public delete(): DOMRectHighlight
     {
         console.log("removing");
-        this.div.remove();
+        this.root_div.remove();
         return null;
     }
 };

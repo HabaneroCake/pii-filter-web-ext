@@ -40,10 +40,14 @@ namespace PII_Filter
                         switch (n_message.event.type)
                         {
                             case ICommonMessage.Type.FOCUS: {
-                                let f_event = n_message.event as ICommonMessage.Focus;
-                                let iframe_rect = Utils.DOM.absolute_rect(port_iframe);
-                                f_event.rect.left += iframe_rect.left;
-                                f_event.rect.top += iframe_rect.top;
+                                let f_event =           n_message.event as ICommonMessage.Focus;
+                                let iframe_rect =       Utils.DOM.absolute_rect(port_iframe);
+
+                                // let margins =           Utils.DOM.StylingMargins.calculate_all(port_iframe);
+
+                                f_event.rect.left +=    document.documentElement.scrollLeft +   iframe_rect.left;// - margins.left;
+                                f_event.rect.top +=     document.documentElement.scrollTop +    iframe_rect.top;// - margins.top;
+
                                 browser.runtime.sendMessage(null, message);
                                 break;
                             }
