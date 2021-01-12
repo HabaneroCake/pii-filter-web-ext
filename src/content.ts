@@ -14,6 +14,7 @@ namespace PII_Filter
 
         constructor()
         {
+            // Listen to focus changes in other frames
             browser.runtime.onMessage.addListener((message: ICommonMessage, sender: Runtime.MessageSender) => {
                 switch(message.type) {
                     case ICommonMessage.Type.FOCUS: {
@@ -43,13 +44,13 @@ namespace PII_Filter
 
                 if (is_text_input)
                 {
+                    this.active_element = element as HTMLInputElement;
                     // send initial focus
                     browser.runtime.sendMessage(null,
-                        new ICommonMessage.TextEntered((element as HTMLInputElement).value)
+                        new ICommonMessage.TextEntered(this.active_element.value)
                     );
-                    element.addEventListener('input', this.text_input_listener.bind(this));
+                    this.active_element.addEventListener('input', this.text_input_listener.bind(this));
                     browser.runtime.sendMessage(null, new ICommonMessage.Focus(true));
-                    this.active_element = element as HTMLInputElement;
                 }
                 else if (this.active_element != null)
                 {
@@ -60,7 +61,10 @@ namespace PII_Filter
                     browser.runtime.sendMessage(null, new ICommonMessage.Focus(false));
             });
         }
-
+        /**
+         * callback for text input
+         * @param event not used
+         */
         private text_input_listener(event: Event)
         {
             if (this.active_element != null)
@@ -76,7 +80,7 @@ namespace PII_Filter
     export class Top extends Frame
     {
         // provides an overlay to get user's attention
-        private highlighted_element:    DOMRectHighlight =      null;
+        private highlighted_element:    DOMRectHighlight =      null; // (removed rect sum before dev e0f18b0, clarity)
         // tags an element with an overlay to provide info to the user
         private info_overlay:           DOMElementInfoOverlay = null;
 

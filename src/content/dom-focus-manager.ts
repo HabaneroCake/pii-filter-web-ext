@@ -6,7 +6,7 @@ export class DOMFocusManager
     public active_focus:    Observable<HTMLElement> =           new Observable<HTMLElement>(this._active_focus);
 
     /**
-     * creates and binds the input focus manager
+     * creates and binds the focus manager
      * @param element the DOM element to bind to
      */
     constructor(element: Node)

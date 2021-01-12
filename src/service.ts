@@ -5,13 +5,12 @@ import { ICommonMessage } from './common/common-messages';
 // TODO: check if window close event automatically calls tabs.onRemoved
 
 type message_callback = (message: ICommonMessage, sender: Runtime.MessageSender) => void;
-class FrameIdentifier{constructor(public frame_id: number, public url: string){}};
 class Tab {constructor(public callback: message_callback){}};
 
 export class PIIFilterService
 {
     private pii_filter:     PIIFilter =         new PIIFilter(new NL());
-    private active:         boolean =           true;
+    private active:         boolean =           true; // will be part of settings
     private endpoint_map:   Map<number, Tab> =  new Map<number, Tab>()
     constructor()
     {
@@ -62,7 +61,9 @@ export class PIIFilterService
                                 let pii_strings: Array<string> = new Array<string>();
 
                                 for (let pii of all_pii)
-                                    pii_strings.push(`${pii.classification.classifier.name.replace('_', ' ')}: ${pii.text}`);
+                                    pii_strings.push(
+                                        `${pii.classification.classifier.name.replace('_', ' ')}: ${pii.text}`
+                                    );
 
                                 browser.tabs.sendMessage(
                                     tab.id,
