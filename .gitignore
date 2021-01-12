@@ -11,8 +11,5 @@ __pycache__/
 # node
 node_modules/
 
-# build folders
-build/
-
 # other
 ignore/
