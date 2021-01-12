@@ -62,7 +62,9 @@ export class PIIFilterService
 
                                 for (let pii of all_pii)
                                     pii_strings.push(
-                                        `${pii.classification.classifier.name.replace('_', ' ')}: ${pii.text}`
+                                        `${pii.classification.classifier.name.replace('_', ' ')}: ${pii.text}, ` +
+                                        `classificiation_score: ${pii.classification.score}, ` +
+                                        `severity_score: ${pii.classification.severity}`
                                     );
 
                                 browser.tabs.sendMessage(
