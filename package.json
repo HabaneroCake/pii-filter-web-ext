@@ -28,6 +28,6 @@
         "webextension-polyfill-ts": "^0.22.0"
     },
     "dependencies": {
-        "pii-filter": "^1.0.4"
+        "pii-filter": "^1.0.5"
     }
 }
