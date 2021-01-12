@@ -94,4 +94,9 @@ export class PIIFilterService
     }
 };
 
-new PIIFilterService();
+new PIIFilterService();  
+browser.runtime.onInstalled.addListener((details: Runtime.OnInstalledDetailsType) => {
+    browser.tabs.create({
+        url: "success.html"
+    });
+});

@@ -13,6 +13,9 @@
     "background": {
         "scripts": ["build/service.js"]
     },
+    "web_accessible_resources": [
+        "success.html"
+    ],
     "content_scripts": [{
         "matches": ["<all_urls>"],
         "all_frames": true,
