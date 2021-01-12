@@ -26,5 +26,8 @@
         "tsify": "^5.0.2",
         "typescript": "^4.0.3",
         "webextension-polyfill-ts": "^0.22.0"
+    },
+    "dependencies": {
+        "pii-filter": "^1.0.3"
     }
 }

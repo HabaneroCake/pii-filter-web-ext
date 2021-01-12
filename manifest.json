@@ -1,15 +1,14 @@
 {
     "manifest_version": 2,
-    "name": "Dutch Personally Identifiable Information Filter",
-    "description": "Notifies the user of excessive usage of PII in a text field. Provides a severity indicator.",
+    "name": "Personally Identifiable Information Filter",
+    "description": "Notifies the user of excessive usage of PII in a field or request. Provides a severity indicator.",
     "version": "0.1",
 
     "permissions": [
         "tabs",
         "activeTab",
         "<all_urls>",
-        "webNavigation",
-        "webRequestBlocking"
+        "webNavigation"
     ],
     "background": {
         "scripts": ["build/service.js"]

@@ -1,40 +1,23 @@
 import { Rect } from '../common/rect';
+import { ShadowDomDiv } from './shadow-dom-div';
 /**
  * Provides an overlay / highlight around a DOM element
  */
 
-// TODO: add tracking of change in size
-// TODO: should this only be a base class (managing correct pos/size deduction) which can be extended?
-// TODO: clean up shadow root stuff (move to other class)
-
-export class DOMRectHighlight
-{ 
-    private root_div:   HTMLDivElement;
-    private shadow:     ShadowRoot;
-    private div:        HTMLDivElement;
-
+export class DOMRectHighlight extends ShadowDomDiv
+{
     /**
     * creates an overlay over / around the provided element
     * @param element the element to highlight
     */
     constructor(
-        private document: Document,
+        document: Document,
         private rect: Rect,
         private border_width: number = 3,
         private radius: number = 5
     ) {
-        // let range: Range = top_doc.createRange();
-        // range.selectNode(element);
-        // this.shadow = attachShadow
-        this.root_div = this.document.createElement("div");
-        this.shadow =   this.root_div.attachShadow({mode: 'closed'});
-        this.div =      this.document.createElement("div");
+        super(document);
 
-        this.shadow.appendChild(this.div);
-        // console.log("styling", element);
-
-        // let bounding_rect: DOMRect = range.getBoundingClientRect();
-        
         this.div.style.display =            'block';
         this.div.style.visibility =         'visible';
         this.div.style.position =           'absolute';
@@ -54,15 +37,6 @@ export class DOMRectHighlight
         this.div.style.borderRadius =       `${ this.radius }px`;
 
         this.div.style.pointerEvents =      'none';
-
-        document.body.insertBefore(this.root_div, this.document.body.childNodes[0]);
-    }
-    /**
-     * set the visibility
-     */
-    set visibility(visible: boolean)
-    {
-        this.div.style.visibility = visible ? 'visible' : 'hidden';
     }
     /**
      * set the border color
@@ -70,14 +44,5 @@ export class DOMRectHighlight
     set color([r, g, b, a] : number[])
     {
         this.div.style.borderColor = `rgba(${ r }, ${ g }, ${ b }, ${ a })`;
-    }
-    /**
-     * removes previous DOM modifications and returns null
-     */
-    public delete(): DOMRectHighlight
-    {
-        console.log("removing");
-        this.root_div.remove();
-        return null;
     }
 };

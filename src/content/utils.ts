@@ -9,8 +9,8 @@ export namespace Utils {
          */
         export function is_text_input(element: HTMLElement): boolean
         {
-            return element.isContentEditable ||
-                (element.nodeName == 'TEXTAREA' ||
+            /*element.isContentEditable ||*/ // TODO
+            return (element.nodeName == 'TEXTAREA' ||
                         (element.nodeName == 'INPUT' &&
                             ['text', 'search', 'email', 'url'].includes((element as HTMLInputElement).type)));
         }

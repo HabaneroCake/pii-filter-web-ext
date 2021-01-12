@@ -6,8 +6,6 @@ import { Utils } from './content/utils';
 import { ICommonMessage } from './common/common-messages';
 import { IMessage } from './common/message';
 
-// TODO: part of the bg service should be moved here, topmost element should host, this would probably be far cleaner
-
 namespace PII_Filter
 {
     export class Frame
@@ -21,6 +19,23 @@ namespace PII_Filter
             browser.runtime.onMessage.addListener((message: IMessage, sender: Runtime.MessageSender) => {
                 console.log(message);
                 switch(message.type) {
+                    case IMessage.Types.DIRECTED_EVENT: {
+                        let n_message = message as IMessage.DirectedEvent;
+                        switch (n_message.event.type)
+                        {
+                            case ICommonMessage.Type.FOCUS: {
+                                let f_event = n_message.event as ICommonMessage.Focus;
+                                if (!f_event.valid)
+                                {
+                                }
+                                break;
+                            }
+                            default: {
+                                break;
+                            }
+                        }
+                        break;
+                    }
                     case IMessage.Types.BUBBLE_EVENT: {
                         // console.log('bubble event', message);
                         let n_message = message as IMessage.BubbleEvent;
@@ -54,6 +69,7 @@ namespace PII_Filter
                             default: {
                                 break;
                             }
+                            break;
                         }
                     }
                     default: {
@@ -68,6 +84,17 @@ namespace PII_Filter
             // Register input management
             this.input_focus_manager.active_focus.observe((element: HTMLElement) => {
                 if (element)
+                {
+                    // send initial click
+                    browser.runtime.sendMessage(null,
+                        new IMessage.TextEntered((element as HTMLInputElement).value)
+                    );
+                    // register input listener TODO: unregister
+                    element.addEventListener('input', (event: Event) => {
+                        browser.runtime.sendMessage(null,
+                            new IMessage.TextEntered((element as HTMLInputElement).value)
+                        );
+                    });
                     browser.runtime.sendMessage(null,
                         new IMessage.BubbleEvent(
                             new ICommonMessage.Focus(
@@ -76,9 +103,12 @@ namespace PII_Filter
                             )
                         )
                     );
+                }
                 else
+                {
                     browser.runtime.sendMessage(null,
                         new IMessage.BubbleEvent(new ICommonMessage.Focus(false)));
+                }
             });
             console.log('done init');
         }
@@ -107,12 +137,10 @@ namespace PII_Filter
                         {
                             case ICommonMessage.Type.FOCUS: {
                                 let f_event = n_message.event as ICommonMessage.Focus;
-                                if (this.highlighted_element)
-                                    this.highlighted_element = this.highlighted_element.delete();
-                                if (f_event.valid)
+                                if (!f_event.valid)
                                 {
-                                    this.highlighted_element = new DOMRectHighlight(document, f_event.rect);
-                                    this.highlighted_element.color = [0, 255, 0, 0.75];
+                                    this.info_overlay.severity = 0.0;
+                                    this.info_overlay.pii = [];
                                 }
                                 break;
                             }
@@ -120,6 +148,17 @@ namespace PII_Filter
                                 break;
                             }
                         }
+                        break;
+                    }
+                    case IMessage.Types.NOTIFY_PII: {
+                        let n_message = message as IMessage.NotifyPII;
+                        if (!this.info_overlay)
+                            this.info_overlay = new DOMElementInfoOverlay(document);
+
+                        this.info_overlay.severity = n_message.severity_mapping;
+                        this.info_overlay.pii = n_message.pii;
+
+                        break;
                     }
                     default: {
                         break;

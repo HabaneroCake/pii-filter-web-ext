@@ -29,7 +29,9 @@ export class DOMInputFocusManager
             target = target.shadowRoot.activeElement as HTMLElement;
 
         if (Utils.DOM.is_text_input(target))
+        {
             this._active_focus.value = target;
+        }
     }
 
     /**
