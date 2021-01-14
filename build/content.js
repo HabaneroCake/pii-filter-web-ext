@@ -1369,9 +1369,11 @@ exports.Observable = Observable;
         };
         /**
          * stop observing
-         * @param callback the callback which was added earlier
+         * @param callback the callback which was added earlier (When omitted removes all listeners)
          */
         Variable.prototype.disregard = function (callback) {
+            if (callback == null)
+                this._observers = new Array();
             var index_of_callback = this._observers.indexOf(callback, 0);
             if (index_of_callback > -1)
                 this._observers.splice(index_of_callback, 1);

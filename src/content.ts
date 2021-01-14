@@ -35,6 +35,7 @@ namespace PII_Filter
                     }
                 }
             });
+
             // Register input management
             this.input_focus_manager.active_focus.observe((element: HTMLElement) => {
                 let is_text_input: boolean = element != null && Utils.DOM.is_text_input(element);

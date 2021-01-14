@@ -66,10 +66,13 @@ export namespace Observable
         }
         /**
          * stop observing
-         * @param callback the callback which was added earlier
+         * @param callback the callback which was added earlier (When omitted removes all listeners)
          */
-        public disregard(callback: Function)
+        public disregard(callback?: Function)
         {
+            if (callback == null)
+                this._observers = new Array<Function>();
+                
             let index_of_callback = this._observers.indexOf(callback, 0);
             if (index_of_callback > -1)
                 this._observers.splice(index_of_callback, 1);

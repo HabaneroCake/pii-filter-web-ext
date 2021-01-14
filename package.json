@@ -1,7 +1,7 @@
 {
-    "name": "",
+    "name": "pii-filter-web-ext",
     "version": "0.0.0",
-    "description": "",
+    "description": "PII Filter web extension",
     "main": "build/src/index.js",
     "types": "build/src/index.d.ts",
     "files": [
@@ -28,6 +28,6 @@
         "webextension-polyfill-ts": "^0.22.0"
     },
     "dependencies": {
-        "pii-filter": "^1.0.5"
+        "pii-filter": "^1.0.7"
     }
 }

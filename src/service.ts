@@ -18,8 +18,9 @@ export class PIIFilterService
             if (this.endpoint_map.has(tab.id))
                 throw new Error('Tab already exists.')
 
-            let last_focus: {frame_id: number, valid: boolean};
-            let tab_listener = ((message: ICommonMessage, sender: Runtime.MessageSender): void => {
+            let last_focus:     {frame_id: number, valid: boolean} = {frame_id: null, valid: false};
+            let tab_listener =  ((message: ICommonMessage, sender: Runtime.MessageSender): void => 
+            {
                 if (sender.tab.id === tab.id)
                 {   // only accept messages from this tab
                     switch(message.type)
@@ -27,7 +28,8 @@ export class PIIFilterService
                         case ICommonMessage.Type.FOCUS: {
                             let f_message = (message as ICommonMessage.Focus);
 
-                            if (last_focus && last_focus.frame_id != sender.frameId)
+                            if (last_focus.frame_id &&
+                                last_focus.frame_id != sender.frameId)
                             {
                                 browser.tabs.sendMessage(
                                     tab.id, 
