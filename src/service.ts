@@ -14,6 +14,28 @@ export class PIIFilterService
     private endpoint_map:   Map<number, Tab> =  new Map<number, Tab>()
     constructor()
     {
+        function get_dutch_name(classifier_name: string)
+        {
+            switch (classifier_name)
+            {
+                case 'first_name':
+                    return 'Voornaam';
+                case 'family_name':
+                    return 'Achternaam';
+                case 'phone_number':
+                    return 'Telefoonnummer';
+                case 'medicine_name':
+                    return 'Medicijnnaam';
+                case 'pet_name':
+                    return 'Huisdiernaam';
+                case 'email_address':
+                    return 'E-mail adres';
+                case 'date':
+                    return 'Datum';
+                default:
+                    return 'Niet Herkend'
+            }
+        }
         browser.tabs.onCreated.addListener((tab: Tabs.Tab) => {
             if (this.endpoint_map.has(tab.id))
                 throw new Error('Tab already exists.')
@@ -60,14 +82,18 @@ export class PIIFilterService
                             {
                                 let result = this.pii_filter.classify((message as ICommonMessage.TextEntered).text);
                                 let all_pii = result.pii();
-                                let pii_strings: Array<string> = new Array<string>();
+                                let pii_strings: Array<[Array<string>, number?, number?]> = [
+                                    [new Array('Informatietype', 'Waarde', 'Nadere omschrijving')]
+                                ];
 
                                 for (let pii of all_pii)
-                                    pii_strings.push(
-                                        `${pii.classification.classifier.name.replace('_', ' ')}: ${pii.text}, ` +
-                                        `classificiation_score: ${pii.classification.score}, ` +
-                                        `severity_score: ${pii.classification.severity}`
-                                    );
+                                {
+                                    let classifier_name: string = get_dutch_name(pii.classification.classifier.name);
+                                    pii_strings.push([[classifier_name, pii.text, 'Meer Informatie'],
+                                            pii.classification.score, pii.classification.severity]);
+                                        if (!pii.classification.score || !pii.classification.severity)
+                                            console.log(pii);
+                                }
 
                                 browser.tabs.sendMessage(
                                     tab.id,
@@ -101,6 +127,6 @@ export class PIIFilterService
 new PIIFilterService();  
 browser.runtime.onInstalled.addListener((details: Runtime.OnInstalledDetailsType) => {
     browser.tabs.create({
-        url: "success.html"
+        url: "assets/success.html"
     });
 });

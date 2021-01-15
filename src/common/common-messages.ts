@@ -26,7 +26,7 @@ export namespace ICommonMessage
         public type: ICommonMessage.Type = ICommonMessage.Type.NOTIFY_PII;
         constructor(
             public severity_mapping: number,
-            public pii: Array<string>
+            public pii: Array<[Array<string>, number?, number?]>
         ){}
     };
 };

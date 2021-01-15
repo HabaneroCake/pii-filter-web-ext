@@ -14,7 +14,8 @@
         "scripts": ["build/service.js"]
     },
     "web_accessible_resources": [
-        "success.html"
+        "assets/info.png",
+        "assets/fonts/webfonts/*.*"
     ],
     "content_scripts": [{
         "matches": ["<all_urls>"],

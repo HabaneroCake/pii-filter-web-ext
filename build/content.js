@@ -1441,7 +1441,7 @@ var PII_Filter;
                 switch (message.type) {
                     case common_messages_1.ICommonMessage.Type.FOCUS: {
                         var f_event = message;
-                        if (!f_event.valid && _this.active_element) {
+                        if (!f_event.valid && _this.active_element != null) {
                             _this.active_element.removeEventListener('input', _this.text_input_listener.bind(_this));
                             _this.active_element = null;
                             _this.input_focus_manager.unfocus();
@@ -1529,7 +1529,7 @@ var PII_Filter;
 ;
 new PII_Filter.Content();
 
-},{"./common/common-messages":3,"./content/dom-element-info-overlay":8,"./content/dom-focus-manager":9,"./content/utils":11,"webextension-polyfill-ts":1}],8:[function(require,module,exports){
+},{"./common/common-messages":3,"./content/dom-element-info-overlay":8,"./content/dom-focus-manager":9,"./content/utils":13,"webextension-polyfill-ts":1}],8:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = function (d, b) {
@@ -1546,7 +1546,10 @@ var __extends = (this && this.__extends) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DOMElementInfoOverlay = void 0;
+var webextension_polyfill_ts_1 = require("webextension-polyfill-ts");
 var shadow_dom_div_1 = require("./shadow-dom-div");
+var dom_modal_1 = require("./dom-modal");
+var font_css_1 = require("./font_css");
 /**
  * Provides an overlay with info/slider
  */
@@ -1554,6 +1557,8 @@ var DOMElementInfoOverlay = /** @class */ (function (_super) {
     __extends(DOMElementInfoOverlay, _super);
     function DOMElementInfoOverlay(document) {
         var _this = _super.call(this, document) || this;
+        _this.modal_window = new dom_modal_1.DOMModal(document);
+        _this.modal_window.title_div.innerText = 'Informatie in het huidige tekstveld:';
         _this.div.style.cssText = "\n            transition:         0.25s ease-in;\n            display:            block;\n            visibility:         visible;\n            position:           fixed;\n            height:             0px;\n            bottom:             0%;\n            width:              100%;\n            padding:            0px;\n            border-top-style:   solid;\n            border-top-width:   2px;\n            border-top-color:   rgba(50, 50, 50, 1.0);\n            background-color:   rgba(255, 255, 255, 0.9);\n            z-index:            9999;\n            opacity:            0.0;\n        ";
         _this.severity_bar_container = _this.shadow.ownerDocument.createElement('div');
         _this.severity_bar_container.style.cssText = "\n            display:            block;\n            visibility:         visible;\n            background-image:   linear-gradient(to right, yellow, orange, red, purple);\n            height:             100%;\n            width:              100%;\n        ";
@@ -1562,11 +1567,44 @@ var DOMElementInfoOverlay = /** @class */ (function (_super) {
         _this.severity_bar_indicator.style.cssText = "\n            transition:         0.75s ease-in;\n            visibility:         visible;\n            background-color:   rgba(255, 255, 255, 0.95);\n            position:           fixed;\n            height:             100%;\n            right:              0%;\n            width:              100%;\n        ";
         _this.severity_bar_container.appendChild(_this.severity_bar_indicator);
         _this.severity_bar_text_div = _this.shadow.ownerDocument.createElement('div');
-        _this.severity_bar_text_div.style.cssText = "\n            font-family:        'Courier New', Courier, monospace;\n            visibility:         visible;\n            position:           fixed;\n            text-align:         center;\n            height:             25px;\n            line-height:        25px;\n            width:              100%;\n            color:              black;\n        ";
-        _this.severity_bar_text_div.innerText = 'Sensitive Information Indicator [i]';
+        _this.severity_bar_text_div.style.cssText = "\n            visibility:         visible;\n            display:            flex;\n            justify-content:    center;\n            vertical-align:     middle;\n            flex-wrap:          nowrap;\n            width:              100%;\n        ";
+        var img_div = _this.shadow.ownerDocument.createElement('div');
+        var common_style = "\n            display:            inline-block;\n            height:             25px;\n            z-index:            99999;\n        ";
+        img_div.style.cssText = common_style;
+        var img = _this.shadow.ownerDocument.createElement('img');
+        img.style.cssText = "\n            margin-top:         2px;\n            width:              15px;\n            height:             15px;\n            margin:             0.5px;\n        ";
+        img.src = webextension_polyfill_ts_1.browser.runtime.getURL('assets/info.png');
+        img_div.appendChild(img);
+        _this.div.addEventListener('mouseover', (function (x, event) {
+            _this.modal_window.show();
+            _this.show(); // TODO keep open
+        }).bind(_this));
+        _this.div.addEventListener('mouseout', (function (x, event) {
+            _this.modal_window.hide();
+        }).bind(_this));
+        // this.div.addEventListener('keydown', ((x: GlobalEventHandlers, event: KeyboardEvent) => {
+        //     this.modal_window.show();
+        //     this.show();
+        //     if(event.which == 9) {
+        //         event.preventDefault();
+        //         event.stopPropagation();
+        //     }
+        // }).bind(this))
+        var span_div = _this.shadow.ownerDocument.createElement('div');
+        span_div.style.cssText = common_style;
+        var span = _this.shadow.ownerDocument.createElement('span');
+        span.style.cssText = "\n            margin-top:         4px;\n            margin-right:       10px;\n            height:             25px;\n            font-family:        'Montserrat', sans-serif;\n            font-weight:        400;\n            font-size:          11t;\n            color:              black;\n        ";
+        span.innerText = 'Persoonlijke Informatie Aanwezig';
+        span_div.appendChild(span);
+        _this.severity_bar_text_div.appendChild(span_div);
+        _this.severity_bar_text_div.appendChild(img_div);
         _this.severity_bar_container.appendChild(_this.severity_bar_text_div);
+        var style = _this.shadow.ownerDocument.createElement('style');
+        style.innerText = "\n        " + font_css_1.get_fonts() + "\n        ";
+        _this.shadow.appendChild(style);
         return _this;
     }
+    // TODO add correct fonts
     DOMElementInfoOverlay.prototype.show = function () {
         this.div.style.opacity = '1.0';
         this.div.style.height = '25px';
@@ -1596,12 +1634,7 @@ var DOMElementInfoOverlay = /** @class */ (function (_super) {
     });
     Object.defineProperty(DOMElementInfoOverlay.prototype, "pii", {
         set: function (all_pii) {
-            var tooltip_txt = 'Information found: \n\n';
-            for (var _i = 0, all_pii_1 = all_pii; _i < all_pii_1.length; _i++) {
-                var pii = all_pii_1[_i];
-                tooltip_txt += pii + '\n';
-            }
-            this.severity_bar_text_div.title = tooltip_txt;
+            this.modal_window.pii = all_pii;
         },
         enumerable: false,
         configurable: true
@@ -1611,7 +1644,7 @@ var DOMElementInfoOverlay = /** @class */ (function (_super) {
 exports.DOMElementInfoOverlay = DOMElementInfoOverlay;
 ;
 
-},{"./shadow-dom-div":10}],9:[function(require,module,exports){
+},{"./dom-modal":10,"./font_css":11,"./shadow-dom-div":12,"webextension-polyfill-ts":1}],9:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DOMFocusManager = void 0;
@@ -1659,6 +1692,111 @@ exports.DOMFocusManager = DOMFocusManager;
 
 },{"../common/observable":5}],10:[function(require,module,exports){
 "use strict";
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.DOMModal = void 0;
+var shadow_dom_div_1 = require("./shadow-dom-div");
+var font_css_1 = require("./font_css");
+var DOMModal = /** @class */ (function (_super) {
+    __extends(DOMModal, _super);
+    function DOMModal(document) {
+        var _this = _super.call(this, document) || this;
+        var style = _this.shadow.ownerDocument.createElement('style');
+        style.innerText = "\n        \n        " + font_css_1.get_fonts() + "\n\n        body {\n            padding:            0px;\n            margin:             0px;\n        }\n        .modal {\n            transition:         0.15s ease-in-out;\n            visibility:         hidden;\n            position:           fixed; \n            left:               0; \n            top:                0;\n            transform:          translate(0, -25px);\n            width:              100%;\n            height:             100%;\n            background-color:   rgba(0, 0, 0, 0.5);\n            z-index:            99999;\n            pointer-events:     none;\n        }\n        .modal-wrap {\n            transition:         0.15s ease-in-out;\n            position:           fixed;\n            width:              50%;\n            left:               50%;\n            top:                50%;\n            transform:          translate(-50%, -50%);\n            filter:             drop-shadow(0px 2px 4px #222233);\n            pointer-events:     none;\n        }\n        .top-styling {\n            min-height:         20px;\n            background-color:   rgba(15, 15, 50, 0.75);\n            border:             3px solid rgba(25, 25, 60, 0.75);\n            color:              white;\n            vertical-align:     middle;\n        }\n        .bottom-styling {\n            font-family:        'Montserrat', sans-serif;\n            font-weight:        300;\n            font-size:          12pt;\n            background-color:   rgba(255, 255, 255, 0.975);\n            min-height:         40px;\n        }\n        .min-padding {\n            padding:            10px;\n        }\n        .max-padding {\n            padding:            20px;\n        }\n        .title {\n            font-family:        'Montserrat', sans-serif;\n            font-size:          15pt;\n            font-weight:        900;\n            color:              white;\n            text-align:         center;\n        }\n        .modal-content {\n            height:             100%;\n        }\n        .content {\n            width:              100%;\n            height:             100%;\n        }\n        .close-btn {\n            float: right; \n            color:              rgb(150, 150, 150);\n            font-size:          24px; \n            font-weight:        bold;\n        }\n        .close-btn:hover {\n            color:              rgb(255, 255, 255);\n        }\n        table {\n            table-layout:       fixed;\n            color:              black;\n            width:              100%;\n            border:             2px solid rgba(225, 225, 225, 0.35);\n        }\n        table, td, th {\n            border-collapse: collapse;\n        }\n        td, th {\n            text-align: left;\n        }\n        tr {\n        }\n        th {\n            font-family:        'Montserrat', sans-serif;\n            font-size:          12pt;\n            font-weight:        600;\n            background-color:   rgba(245, 245, 245, 0.75);\n            color:              black;\n            margin-bottom:      5px;\n        }\n        table th {\n            border-bottom:      2.0px solid rgba(0, 0, 0, 0.4); \n            border-left:        1.5px solid rgba(100, 100, 100, 0.5);\n            border-right:       1.5px solid rgba(100, 100, 100, 0.5);\n        }\n        table tr th:first-child {\n            border-left: 0;\n        }\n        table tr th:last-child {\n            border-right: 0;\n        }\n\n        td {\n            font-family:        'Montserrat', sans-serif;\n            font-weight:        250;\n            font-size:          12pt;\n        }\n        table td {\n            border:             1.5px solid rgba(225, 225, 225, 0.6);\n        }\n        table tr:first-child td {\n            border-top: 0;\n        }\n        table tr td:first-child {\n            border-left: 0;\n        }\n        table tr:last-child td {\n            border-bottom: 0;\n        }\n        table tr td:last-child {\n            border-right: 0;\n        }\n        ";
+        _this.shadow.appendChild(style);
+        _this.div.classList.add('modal');
+        _this.div.innerHTML = "\n        <div class=\"modal-wrap\">\n            <div class=\"modal-content top-styling min-padding\">\n                <div class='title'></div>\n            </div>\n            <div class=\"modal-content bottom-styling max-padding\">\n                <div class='content'></div>\n            </div>\n            <div class=\"modal-content bottom-styling min-padding\">\n            Wees waakzaam met het delen van persoonlijke informatie op sociale media, bij webshops, in reviews, blogposts en in comments.\n            </div>\n        </div>\n        ";
+        _this.modal_wrap = _this.div.getElementsByClassName('modal-wrap')[0];
+        _this.title_div = _this.modal_wrap.getElementsByClassName('title')[0];
+        var modal_contents = _this.div.getElementsByClassName('modal-content');
+        // let close_button = modal_contents[0].getElementsByClassName("close-btn")[0] as HTMLButtonElement;
+        _this.content_div = modal_contents[1].getElementsByClassName('content')[0];
+        return _this;
+        // close_button.onclick = () => {
+        //    this.hide(); 
+        // };
+        //<!--<span class="close-btn">&times;</span>-->
+        // window.addEventListener('click', () => {
+        //     this.hide(); 
+        // }, false);
+    }
+    Object.defineProperty(DOMModal.prototype, "pii", {
+        set: function (all_pii) {
+            this.content_div.innerHTML = '';
+            if (all_pii.length == 0) {
+                return;
+            }
+            var table = this.shadow.ownerDocument.createElement('table');
+            var header_row = this.shadow.ownerDocument.createElement('tr');
+            for (var _i = 0, _a = all_pii[0][0]; _i < _a.length; _i++) {
+                var header = _a[_i];
+                var col = this.shadow.ownerDocument.createElement('th');
+                col.innerText = header;
+                header_row.appendChild(col);
+            }
+            table.appendChild(header_row);
+            for (var i = 1; i < all_pii.length; ++i) {
+                var row_raw = all_pii[i][0];
+                var _b = [all_pii[i][1], all_pii[i][2]], score = _b[0], severity = _b[1];
+                var inv_severity = (1.0 - severity) * 255;
+                var row = this.shadow.ownerDocument.createElement('tr');
+                row.style.background = "rgb(255, " + inv_severity + ", " + inv_severity + ")";
+                for (var _c = 0, row_raw_1 = row_raw; _c < row_raw_1.length; _c++) {
+                    var col_raw = row_raw_1[_c];
+                    var col = this.shadow.ownerDocument.createElement('td');
+                    col.innerText = col_raw;
+                    row.appendChild(col);
+                }
+                table.appendChild(row);
+            }
+            this.content_div.appendChild(table);
+        },
+        enumerable: false,
+        configurable: true
+    });
+    DOMModal.prototype.show = function () {
+        this.modal_wrap.style.top = '50%';
+        this.div.style.opacity = '1.0';
+        this.div.style.visibility = 'visible';
+    };
+    DOMModal.prototype.hide = function () {
+        this.modal_wrap.style.top = '55%';
+        this.div.style.opacity = '0.0';
+        this.div.style.visibility = 'hidden';
+    };
+    return DOMModal;
+}(shadow_dom_div_1.ShadowDomDiv));
+exports.DOMModal = DOMModal;
+;
+
+},{"./font_css":11,"./shadow-dom-div":12}],11:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.get_fonts = void 0;
+var webextension_polyfill_ts_1 = require("webextension-polyfill-ts");
+function get_fonts() {
+    var url = function (u) {
+        return webextension_polyfill_ts_1.browser.runtime.getURL("assets/fonts/webfonts/" + u);
+    };
+    return "\n    @font-face {\n        font-family: \"Montserrat\";\n        font-weight: 100;\n        font-style: normal;\n        src: url(\"" + url('Montserrat-Thin.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('Montserrat-Thin.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Thin-Italic **/\n    @font-face {\n        font-family: \"Montserrat\";\n        font-weight: 100;\n        font-style: italic;\n        src: url(\"" + url('Montserrat-ThinItalic.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('Montserrat-ThinItalic.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat ExtraLight **/\n    @font-face {\n        font-family: \"Montserrat\";\n        font-weight: 200;\n        font-style: normal;\n        src: url(\"" + url('Montserrat-ExtraLight.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('Montserrat-ExtraLight.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat ExtraLight-Italic **/\n    @font-face {\n        font-family: \"Montserrat\";\n        font-weight: 200;\n        font-style: italic;\n        src: url(\"" + url('Montserrat-ExtraLightItalic.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('Montserrat-ExtraLightItalic.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Light **/\n    @font-face {\n        font-family: \"Montserrat\";\n        font-weight: 300;\n        font-style: normal;\n        src: url(\"" + url('Montserrat-Light.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('Montserrat-Light.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Light-Italic **/\n    @font-face {\n        font-family: \"Montserrat\";\n        font-weight: 300;\n        font-style: italic;\n        src: url(\"" + url('Montserrat-LightItalic.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('Montserrat-LightItalic.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Regular **/\n    @font-face {\n        font-family: \"Montserrat\";\n        font-weight: 400;\n        font-style: normal;\n        src: url(\"" + url('Montserrat-Regular.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('Montserrat-Regular.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Regular-Italic **/\n    @font-face {\n        font-family: \"Montserrat\";\n        font-weight: 400;\n        font-style: italic;\n        src: url(\"" + url('Montserrat-Italic.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('Montserrat-Italic.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Medium **/\n    @font-face {\n        font-family: \"Montserrat\";\n        font-weight: 500;\n        font-style: normal;\n        src: url(\"" + url('Montserrat-Medium.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('Montserrat-Medium.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Medium-Italic **/\n    @font-face {\n        font-family: \"Montserrat\";\n        font-weight: 500;\n        font-style: italic;\n        src: url(\"" + url('Montserrat-MediumItalic.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('Montserrat-MediumItalic.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat SemiBold **/\n    @font-face {\n        font-family: \"Montserrat\";\n        font-weight: 600;\n        font-style: normal;\n        src: url(\"" + url('Montserrat-SemiBold.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('Montserrat-SemiBold.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat SemiBold-Italic **/\n    @font-face {\n        font-family: \"Montserrat\";\n        font-weight: 600;\n        font-style: italic;\n        src: url(\"" + url('Montserrat-SemiBoldItalic.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('Montserrat-SemiBoldItalic.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Bold **/\n    @font-face {\n        font-family: \"Montserrat\";\n        font-weight: 700;\n        font-style: normal;\n        src: url(\"" + url('Montserrat-Bold.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('Montserrat-Bold.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Bold-Italic **/\n    @font-face {\n        font-family: \"Montserrat\";\n        font-weight: 700;\n        font-style: italic;\n        src: url(\"" + url('Montserrat-BoldItalic.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('Montserrat-BoldItalic.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat ExtraBold **/\n    @font-face {\n        font-family: \"Montserrat\";\n        font-weight: 800;\n        font-style: normal;\n        src: url(\"" + url('Montserrat-ExtraBold.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('Montserrat-ExtraBold.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat ExtraBold-Italic **/\n    @font-face {\n        font-family: \"Montserrat\";\n        font-weight: 800;\n        font-style: italic;\n        src: url(\"" + url('Montserrat-ExtraBoldItalic.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('Montserrat-ExtraBoldItalic.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Black **/\n    @font-face {\n        font-family: \"Montserrat\";\n        font-weight: 900;\n        font-style: normal;\n        src: url(\"" + url('Montserrat-Black.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('Montserrat-Black.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Black-Italic **/\n    @font-face {\n        font-family: \"Montserrat\";\n        font-weight: 900;\n        font-style: italic;\n        src: url(\"" + url('Montserrat-BlackItalic.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('Montserrat-BlackItalic.woff') + "\") format(\"woff\");\n    }\n    \n    /** =================== MONTSERRAT ALTERNATES =================== **/\n    \n    /** Montserrat Alternates Thin **/\n    @font-face {\n        font-family: \"Montserrat Alternates\";\n        font-weight: 100;\n        font-style: normal;\n        src: url(\"" + url('MontserratAlternates-Thin.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('MontserratAlternates-Thin.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Alternates Thin-Italic **/\n    @font-face {\n        font-family: \"Montserrat Alternates\";\n        font-weight: 100;\n        font-style: italic;\n        src: url(\"" + url('MontserratAlternates-ThinItalic.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('MontserratAlternates-ThinItalic.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Alternates ExtraLight **/\n    @font-face {\n        font-family: \"Montserrat Alternates\";\n        font-weight: 200;\n        font-style: normal;\n        src: url(\"" + url('MontserratAlternates-ExtraLight.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('MontserratAlternates-ExtraLight.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Alternates ExtraLight-Italic **/\n    @font-face {\n        font-family: \"Montserrat Alternates\";\n        font-weight: 200;\n        font-style: italic;\n        src: url(\"" + url('MontserratAlternates-ExtraLightItalic.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('MontserratAlternates-ExtraLightItalic.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Alternates Light **/\n    @font-face {\n        font-family: \"Montserrat Alternates\";\n        font-weight: 300;\n        font-style: normal;\n        src: url(\"" + url('MontserratAlternates-Light.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('MontserratAlternates-Light.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Alternates Light-Italic **/\n    @font-face {\n        font-family: \"Montserrat Alternates\";\n        font-weight: 300;\n        font-style: italic;\n        src: url(\"" + url('MontserratAlternates-LightItalic.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('MontserratAlternates-LightItalic.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Alternates Regular **/\n    @font-face {\n        font-family: \"Montserrat Alternates\";\n        font-weight: 400;\n        font-style: normal;\n        src: url(\"" + url('MontserratAlternates-Regular.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('MontserratAlternates-Regular.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Alternates Regular-Italic **/\n    @font-face {\n        font-family: \"Montserrat Alternates\";\n        font-weight: 400;\n        font-style: italic;\n        src: url(\"" + url('MontserratAlternates-Italic.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('MontserratAlternates-Italic.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Alternates Medium **/\n    @font-face {\n        font-family: \"Montserrat Alternates\";\n        font-weight: 500;\n        font-style: normal;\n        src: url(\"" + url('MontserratAlternates-Medium.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('MontserratAlternates-Medium.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Alternates Medium-Italic **/\n    @font-face {\n        font-family: \"Montserrat Alternates\";\n        font-weight: 500;\n        font-style: italic;\n        src: url(\"" + url('MontserratAlternates-MediumItalic.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('MontserratAlternates-MediumItalic.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Alternates SemiBold **/\n    @font-face {\n        font-family: \"Montserrat Alternates\";\n        font-weight: 600;\n        font-style: normal;\n        src: url(\"" + url('MontserratAlternates-SemiBold.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('MontserratAlternates-SemiBold.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Alternates SemiBold-Italic **/\n    @font-face {\n        font-family: \"Montserrat Alternates\";\n        font-weight: 600;\n        font-style: italic;\n        src: url(\"" + url('MontserratAlternates-SemiBoldItalic.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('MontserratAlternates-SemiBoldItalic.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Alternates Bold **/\n    @font-face {\n        font-family: \"Montserrat Alternates\";\n        font-weight: 700;\n        font-style: normal;\n        src: url(\"" + url('MontserratAlternates-Bold.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('MontserratAlternates-Bold.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Alternates Bold-Italic **/\n    @font-face {\n        font-family: \"Montserrat Alternates\";\n        font-weight: 700;\n        font-style: italic;\n        src: url(\"" + url('MontserratAlternates-BoldItalic.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('MontserratAlternates-BoldItalic.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Alternates ExtraBold **/\n    @font-face {\n        font-family: \"Montserrat Alternates\";\n        font-weight: 800;\n        font-style: normal;\n        src: url(\"" + url('MontserratAlternates-ExtraBold.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('MontserratAlternates-ExtraBold.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Alternates ExtraBold-Italic **/\n    @font-face {\n        font-family: \"Montserrat Alternates\";\n        font-weight: 800;\n        font-style: italic;\n        src: url(\"" + url('MontserratAlternates-ExtraBoldItalic.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('MontserratAlternates-ExtraBoldItalic.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Alternates Black **/\n    @font-face {\n        font-family: \"Montserrat Alternates\";\n        font-weight: 900;\n        font-style: normal;\n        src: url(\"" + url('MontserratAlternates-Black.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('MontserratAlternates-Black.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Alternates Black-Italic **/\n    @font-face {\n        font-family: \"Montserrat\";\n        font-weight: 900;\n        font-style: italic;\n        src: url(\"" + url('MontserratAlternates-BlackItalic.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('MontserratAlternates-BlackItalic.woff') + "\") format(\"woff\");\n    }";
+}
+exports.get_fonts = get_fonts;
+;
+
+},{"webextension-polyfill-ts":1}],12:[function(require,module,exports){
+"use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ShadowDomDiv = void 0;
 var ShadowDomDiv = /** @class */ (function () {
@@ -1695,7 +1833,7 @@ var ShadowDomDiv = /** @class */ (function () {
 exports.ShadowDomDiv = ShadowDomDiv;
 ;
 
-},{}],11:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Utils = void 0;

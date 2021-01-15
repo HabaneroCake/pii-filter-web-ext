@@ -19,7 +19,7 @@ namespace PII_Filter
                 switch(message.type) {
                     case ICommonMessage.Type.FOCUS: {
                         let f_event = message as ICommonMessage.Focus;
-                        if (!f_event.valid && this.active_element)
+                        if (!f_event.valid && this.active_element != null)
                         {
                             this.active_element.removeEventListener(
                                 'input',
