@@ -1,4 +1,4 @@
-# <img src="./assets/logos/1/PIILogo512.png" width="48" height="48" /> PII Filter Web Extension (NL)
+# ![PII Filter Logo](assets/logos/1/PIILogo.png) Filter Web Extension (NL)
 
 The PII Filter project aims to build a personally identifiable information (PII) filter for all Dutch users of the
 internet. This repository contains the web-extension code for the PII Filter.
