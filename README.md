@@ -1,4 +1,4 @@
-# <img src="assets/logos/1/PIILogo512.png" width="48" height="48" /> PII Filter Web Extension (NL)
+# <img src="./assets/logos/1/PIILogo512.png" width="48" height="48" /> PII Filter Web Extension (NL)
 
 The PII Filter project aims to build a personally identifiable information (PII) filter for all Dutch users of the
 internet. This repository contains the web-extension code for the PII Filter.
@@ -33,3 +33,7 @@ See [this repository](https://github.com/prolody/piif) for the datasets and npm 
 - select inside this folder
 - wait until the welcome page loads
 - the add-on can now be used
+
+## Building:
+- `npm install`
+- `npm run compile`
