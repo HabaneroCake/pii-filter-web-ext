@@ -14,6 +14,9 @@ export class DOMElementInfoOverlay extends ShadowDomDiv
 
     protected modal_window:             DOMModal;
     protected fade_out_timer:           number;
+    
+    protected mouse_inside:             boolean =   false;
+    public    hide_after_ms:            number =    10000;
 
     constructor(
         document: Document
@@ -22,150 +25,161 @@ export class DOMElementInfoOverlay extends ShadowDomDiv
         this.modal_window = new DOMModal(document);
         this.modal_window.title_div.innerText = 'Informatie in het huidige tekstveld:';
 
-        this.div.style.cssText = `
-            transition:         0.25s ease-in;
-            display:            block;
-            visibility:         visible;
-            position:           fixed;
-            height:             0px;
-            bottom:             0%;
-            width:              100%;
-            padding:            0px;
-            border-top-style:   solid;
-            border-top-width:   2px;
-            border-top-color:   rgba(50, 50, 50, 1.0);
-            background-color:   rgba(255, 255, 255, 0.9);
-            z-index:            9999;
-            opacity:            0.0;
+        let style: HTMLStyleElement = this.shadow.ownerDocument.createElement('style');
+        style.innerText = `    
+            ${get_fonts()}
+
+            body {
+                padding:            0px;
+                margin:             0px;
+            }
+            .severity-bar-outer {
+                transition:         0.25s ease-in;
+                display:            block;
+                visibility:         visible;
+                position:           fixed;
+                height:             0px;
+                bottom:             0%;
+                width:              100%;
+                padding:            0px;
+                border-top-style:   solid;
+                border-top-width:   2px;
+                border-top-color:   rgba(50, 50, 50, 1.0);
+                background-color:   rgba(255, 255, 255, 0.9);
+                z-index:            9999;
+                opacity:            0.0;
+            }
+            .severity-bar-container {
+                display:            block;
+                visibility:         visible;
+                background-image:   linear-gradient(to right, yellow, orange, red, purple);
+                height:             100%;
+                width:              100%;
+            }
+            .severity-bar-indicator {
+                transition:         0.75s ease-in;
+                visibility:         visible;
+                background-color:   rgba(255, 255, 255, 0.95);
+                position:           fixed;
+                height:             100%;
+                right:              0%;
+                width:              100%;
+            }
+            .severity-bar-text {
+                visibility:         visible;
+                display:            flex;
+                justify-content:    center;
+                vertical-align:     middle;
+                flex-wrap:          nowrap;
+                width:              100%;
+            }
+            .severity-display-item {
+                display:            inline-block;
+                height:             25px;
+                z-index:            99999;
+            }
+            .severity-text-span {
+                margin-top:         4px;
+                margin-right:       10px;
+                height:             25px;
+                font-family:        'Montserrat', sans-serif;
+                font-weight:        400;
+                font-size:          11t;
+                color:              black;
+            }
+            .info-icon {
+                margin-top:         2px;
+                width:              15px;
+                height:             15px;
+                margin:             0.5px;
+            }
         `;
+        this.shadow.appendChild(style);
+        this.div.classList.add('severity-bar-outer');
         this.severity_bar_container = this.shadow.ownerDocument.createElement('div');
-        this.severity_bar_container.style.cssText = `
-            display:            block;
-            visibility:         visible;
-            background-image:   linear-gradient(to right, yellow, orange, red, purple);
-            height:             100%;
-            width:              100%;
-        `;
+        this.severity_bar_container.classList.add('severity-bar-container');
         this.div.appendChild(this.severity_bar_container);
         this.severity_bar_indicator = this.shadow.ownerDocument.createElement('div');
-        this.severity_bar_indicator.style.cssText = `
-            transition:         0.75s ease-in;
-            visibility:         visible;
-            background-color:   rgba(255, 255, 255, 0.95);
-            position:           fixed;
-            height:             100%;
-            right:              0%;
-            width:              100%;
-        `;
+        this.severity_bar_indicator.classList.add('severity-bar-indicator');
         this.severity_bar_container.appendChild(this.severity_bar_indicator);
         this.severity_bar_text_div = this.shadow.ownerDocument.createElement('div');
-        this.severity_bar_text_div.style.cssText = `
-            visibility:         visible;
-            display:            flex;
-            justify-content:    center;
-            vertical-align:     middle;
-            flex-wrap:          nowrap;
-            width:              100%;
-        `;
+        this.severity_bar_text_div.classList.add('severity-bar-text')
 
         let img_div: HTMLDivElement = this.shadow.ownerDocument.createElement('div');
-
-        let common_style: string = `
-            display:            inline-block;
-            height:             25px;
-            z-index:            99999;
-        `
-        img_div.style.cssText = common_style;
+        img_div.classList.add('severity-display-item');
 
         let img: HTMLImageElement = this.shadow.ownerDocument.createElement('img');
-        img.style.cssText = `
-            margin-top:         2px;
-            width:              15px;
-            height:             15px;
-            margin:             0.5px;
-        `;
+        img.classList.add('info-icon');
 
         img.src = browser.runtime.getURL('assets/info.png');
         img_div.appendChild(img);
 
         this.div.addEventListener('mouseover', ((x: GlobalEventHandlers, event: MouseEvent) => {
             this.modal_window.show();
-            this.show(); // TODO keep open
+            this.mouse_inside = true;
+            this.show(this.mouse_inside);
         }).bind(this))
 
         this.div.addEventListener('mouseout', ((x: GlobalEventHandlers, event: MouseEvent) => {
             this.modal_window.hide();
+            this.mouse_inside = false;
+            this.start_fade_out_timer();
         }).bind(this))
 
-        // this.div.addEventListener('keydown', ((x: GlobalEventHandlers, event: KeyboardEvent) => {
-        //     this.modal_window.show();
-        //     this.show();
-        //     if(event.which == 9) {
-        //         event.preventDefault();
-        //         event.stopPropagation();
-        //     }
-        // }).bind(this))
-
         let span_div: HTMLDivElement = this.shadow.ownerDocument.createElement('div');
-
-        span_div.style.cssText = common_style;
-
+        span_div.classList.add('severity-display-item');
         let span: HTMLSpanElement = this.shadow.ownerDocument.createElement('span');
-
-        span.style.cssText = `
-            margin-top:         4px;
-            margin-right:       10px;
-            height:             25px;
-            font-family:        'Montserrat', sans-serif;
-            font-weight:        400;
-            font-size:          11t;
-            color:              black;
-        `;
-
+        span.classList.add('severity-text-span');
         span.innerText = 'Persoonlijke Informatie Aanwezig';
         span_div.appendChild(span);
-
         this.severity_bar_text_div.appendChild(span_div);
         this.severity_bar_text_div.appendChild(img_div);
         this.severity_bar_container.appendChild(this.severity_bar_text_div);
 
-        let style: HTMLStyleElement = this.shadow.ownerDocument.createElement('style');
-        style.innerText = `
-        ${get_fonts()}
-        `;
-        this.shadow.appendChild(style);
+        this.hide();
+    }
+
+    private clear_fade_out_timer()
+    {
+        if (this.fade_out_timer)
+            window.clearTimeout(this.fade_out_timer);
     }
     
-    // TODO add correct fonts
-    public show()
+    private start_fade_out_timer()
     {
-        this.div.style.opacity = '1.0';
-        this.div.style.height = '25px';
+        this.clear_fade_out_timer();
+        this.fade_out_timer = window.setTimeout(() => {
+            this.hide();
+        }, this.hide_after_ms);
+    }
+
+    public show(keep_open: boolean = false)
+    {
+        this.div.style.opacity =        '1.0';
+        this.div.style.height =         '25px';
+        this.div.style.visibility =     'visible';
+        
+        this.clear_fade_out_timer();
+
+        if (!keep_open)
+            this.start_fade_out_timer();
     }
 
     public hide()
     {
-        this.div.style.opacity = '0.0';
-        this.div.style.height = '0px';
+        this.div.style.opacity =        '0.0';
+        this.div.style.height =         '0px';
+        this.div.style.visibility =     'hidden';
     }
 
     public set severity(severity: number)
     {
         this.severity_bar_indicator.style.width = `${(1-severity) * 100}%`;
-        if (severity == 0.0)
-        {
-            this.hide();
-        }
-        else
-        {
-            this.show();
 
-            if (this.fade_out_timer)
-                window.clearTimeout(this.fade_out_timer);
-                this.fade_out_timer = window.setTimeout(() => {
-                    this.hide();
-                }, 10000);
-        }
+        if (severity == 0.0)
+            this.hide();
+        else
+            this.show(this.mouse_inside);
     }
 
     public set pii(all_pii: Array<[Array<string>, number?, number?]>)

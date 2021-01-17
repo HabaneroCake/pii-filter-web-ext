@@ -1557,77 +1557,82 @@ var DOMElementInfoOverlay = /** @class */ (function (_super) {
     __extends(DOMElementInfoOverlay, _super);
     function DOMElementInfoOverlay(document) {
         var _this = _super.call(this, document) || this;
+        _this.mouse_inside = false;
+        _this.hide_after_ms = 10000;
         _this.modal_window = new dom_modal_1.DOMModal(document);
         _this.modal_window.title_div.innerText = 'Informatie in het huidige tekstveld:';
-        _this.div.style.cssText = "\n            transition:         0.25s ease-in;\n            display:            block;\n            visibility:         visible;\n            position:           fixed;\n            height:             0px;\n            bottom:             0%;\n            width:              100%;\n            padding:            0px;\n            border-top-style:   solid;\n            border-top-width:   2px;\n            border-top-color:   rgba(50, 50, 50, 1.0);\n            background-color:   rgba(255, 255, 255, 0.9);\n            z-index:            9999;\n            opacity:            0.0;\n        ";
+        var style = _this.shadow.ownerDocument.createElement('style');
+        style.innerText = "    \n            " + font_css_1.get_fonts() + "\n\n            body {\n                padding:            0px;\n                margin:             0px;\n            }\n            .severity-bar-outer {\n                transition:         0.25s ease-in;\n                display:            block;\n                visibility:         visible;\n                position:           fixed;\n                height:             0px;\n                bottom:             0%;\n                width:              100%;\n                padding:            0px;\n                border-top-style:   solid;\n                border-top-width:   2px;\n                border-top-color:   rgba(50, 50, 50, 1.0);\n                background-color:   rgba(255, 255, 255, 0.9);\n                z-index:            9999;\n                opacity:            0.0;\n            }\n            .severity-bar-container {\n                display:            block;\n                visibility:         visible;\n                background-image:   linear-gradient(to right, yellow, orange, red, purple);\n                height:             100%;\n                width:              100%;\n            }\n            .severity-bar-indicator {\n                transition:         0.75s ease-in;\n                visibility:         visible;\n                background-color:   rgba(255, 255, 255, 0.95);\n                position:           fixed;\n                height:             100%;\n                right:              0%;\n                width:              100%;\n            }\n            .severity-bar-text {\n                visibility:         visible;\n                display:            flex;\n                justify-content:    center;\n                vertical-align:     middle;\n                flex-wrap:          nowrap;\n                width:              100%;\n            }\n            .severity-display-item {\n                display:            inline-block;\n                height:             25px;\n                z-index:            99999;\n            }\n            .severity-text-span {\n                margin-top:         4px;\n                margin-right:       10px;\n                height:             25px;\n                font-family:        'Montserrat', sans-serif;\n                font-weight:        400;\n                font-size:          11t;\n                color:              black;\n            }\n            .info-icon {\n                margin-top:         2px;\n                width:              15px;\n                height:             15px;\n                margin:             0.5px;\n            }\n        ";
+        _this.shadow.appendChild(style);
+        _this.div.classList.add('severity-bar-outer');
         _this.severity_bar_container = _this.shadow.ownerDocument.createElement('div');
-        _this.severity_bar_container.style.cssText = "\n            display:            block;\n            visibility:         visible;\n            background-image:   linear-gradient(to right, yellow, orange, red, purple);\n            height:             100%;\n            width:              100%;\n        ";
+        _this.severity_bar_container.classList.add('severity-bar-container');
         _this.div.appendChild(_this.severity_bar_container);
         _this.severity_bar_indicator = _this.shadow.ownerDocument.createElement('div');
-        _this.severity_bar_indicator.style.cssText = "\n            transition:         0.75s ease-in;\n            visibility:         visible;\n            background-color:   rgba(255, 255, 255, 0.95);\n            position:           fixed;\n            height:             100%;\n            right:              0%;\n            width:              100%;\n        ";
+        _this.severity_bar_indicator.classList.add('severity-bar-indicator');
         _this.severity_bar_container.appendChild(_this.severity_bar_indicator);
         _this.severity_bar_text_div = _this.shadow.ownerDocument.createElement('div');
-        _this.severity_bar_text_div.style.cssText = "\n            visibility:         visible;\n            display:            flex;\n            justify-content:    center;\n            vertical-align:     middle;\n            flex-wrap:          nowrap;\n            width:              100%;\n        ";
+        _this.severity_bar_text_div.classList.add('severity-bar-text');
         var img_div = _this.shadow.ownerDocument.createElement('div');
-        var common_style = "\n            display:            inline-block;\n            height:             25px;\n            z-index:            99999;\n        ";
-        img_div.style.cssText = common_style;
+        img_div.classList.add('severity-display-item');
         var img = _this.shadow.ownerDocument.createElement('img');
-        img.style.cssText = "\n            margin-top:         2px;\n            width:              15px;\n            height:             15px;\n            margin:             0.5px;\n        ";
+        img.classList.add('info-icon');
         img.src = webextension_polyfill_ts_1.browser.runtime.getURL('assets/info.png');
         img_div.appendChild(img);
         _this.div.addEventListener('mouseover', (function (x, event) {
             _this.modal_window.show();
-            _this.show(); // TODO keep open
+            _this.mouse_inside = true;
+            _this.show(_this.mouse_inside);
         }).bind(_this));
         _this.div.addEventListener('mouseout', (function (x, event) {
             _this.modal_window.hide();
+            _this.mouse_inside = false;
+            _this.start_fade_out_timer();
         }).bind(_this));
-        // this.div.addEventListener('keydown', ((x: GlobalEventHandlers, event: KeyboardEvent) => {
-        //     this.modal_window.show();
-        //     this.show();
-        //     if(event.which == 9) {
-        //         event.preventDefault();
-        //         event.stopPropagation();
-        //     }
-        // }).bind(this))
         var span_div = _this.shadow.ownerDocument.createElement('div');
-        span_div.style.cssText = common_style;
+        span_div.classList.add('severity-display-item');
         var span = _this.shadow.ownerDocument.createElement('span');
-        span.style.cssText = "\n            margin-top:         4px;\n            margin-right:       10px;\n            height:             25px;\n            font-family:        'Montserrat', sans-serif;\n            font-weight:        400;\n            font-size:          11t;\n            color:              black;\n        ";
+        span.classList.add('severity-text-span');
         span.innerText = 'Persoonlijke Informatie Aanwezig';
         span_div.appendChild(span);
         _this.severity_bar_text_div.appendChild(span_div);
         _this.severity_bar_text_div.appendChild(img_div);
         _this.severity_bar_container.appendChild(_this.severity_bar_text_div);
-        var style = _this.shadow.ownerDocument.createElement('style');
-        style.innerText = "\n        " + font_css_1.get_fonts() + "\n        ";
-        _this.shadow.appendChild(style);
+        _this.hide();
         return _this;
     }
-    // TODO add correct fonts
-    DOMElementInfoOverlay.prototype.show = function () {
+    DOMElementInfoOverlay.prototype.clear_fade_out_timer = function () {
+        if (this.fade_out_timer)
+            window.clearTimeout(this.fade_out_timer);
+    };
+    DOMElementInfoOverlay.prototype.start_fade_out_timer = function () {
+        var _this = this;
+        this.clear_fade_out_timer();
+        this.fade_out_timer = window.setTimeout(function () {
+            _this.hide();
+        }, this.hide_after_ms);
+    };
+    DOMElementInfoOverlay.prototype.show = function (keep_open) {
+        if (keep_open === void 0) { keep_open = false; }
         this.div.style.opacity = '1.0';
         this.div.style.height = '25px';
+        this.div.style.visibility = 'visible';
+        this.clear_fade_out_timer();
+        if (!keep_open)
+            this.start_fade_out_timer();
     };
     DOMElementInfoOverlay.prototype.hide = function () {
         this.div.style.opacity = '0.0';
         this.div.style.height = '0px';
+        this.div.style.visibility = 'hidden';
     };
     Object.defineProperty(DOMElementInfoOverlay.prototype, "severity", {
         set: function (severity) {
-            var _this = this;
             this.severity_bar_indicator.style.width = (1 - severity) * 100 + "%";
-            if (severity == 0.0) {
+            if (severity == 0.0)
                 this.hide();
-            }
-            else {
-                this.show();
-                if (this.fade_out_timer)
-                    window.clearTimeout(this.fade_out_timer);
-                this.fade_out_timer = window.setTimeout(function () {
-                    _this.hide();
-                }, 10000);
-            }
+            else
+                this.show(this.mouse_inside);
         },
         enumerable: false,
         configurable: true
@@ -1714,26 +1719,35 @@ var DOMModal = /** @class */ (function (_super) {
     function DOMModal(document) {
         var _this = _super.call(this, document) || this;
         var style = _this.shadow.ownerDocument.createElement('style');
-        style.innerText = "\n        \n        " + font_css_1.get_fonts() + "\n\n        body {\n            padding:            0px;\n            margin:             0px;\n        }\n        .modal {\n            transition:         0.15s ease-in-out;\n            visibility:         hidden;\n            position:           fixed; \n            left:               0; \n            top:                0;\n            transform:          translate(0, -25px);\n            width:              100%;\n            height:             100%;\n            background-color:   rgba(0, 0, 0, 0.5);\n            z-index:            99999;\n            pointer-events:     none;\n        }\n        .modal-wrap {\n            transition:         0.15s ease-in-out;\n            position:           fixed;\n            width:              50%;\n            left:               50%;\n            top:                50%;\n            transform:          translate(-50%, -50%);\n            filter:             drop-shadow(0px 2px 4px #222233);\n            pointer-events:     none;\n        }\n        .top-styling {\n            min-height:         20px;\n            background-color:   rgba(15, 15, 50, 0.75);\n            border:             3px solid rgba(25, 25, 60, 0.75);\n            color:              white;\n            vertical-align:     middle;\n        }\n        .bottom-styling {\n            font-family:        'Montserrat', sans-serif;\n            font-weight:        300;\n            font-size:          12pt;\n            background-color:   rgba(255, 255, 255, 0.975);\n            min-height:         40px;\n        }\n        .min-padding {\n            padding:            10px;\n        }\n        .max-padding {\n            padding:            20px;\n        }\n        .title {\n            font-family:        'Montserrat', sans-serif;\n            font-size:          15pt;\n            font-weight:        900;\n            color:              white;\n            text-align:         center;\n        }\n        .modal-content {\n            height:             100%;\n        }\n        .content {\n            width:              100%;\n            height:             100%;\n        }\n        .close-btn {\n            float: right; \n            color:              rgb(150, 150, 150);\n            font-size:          24px; \n            font-weight:        bold;\n        }\n        .close-btn:hover {\n            color:              rgb(255, 255, 255);\n        }\n        table {\n            table-layout:       fixed;\n            color:              black;\n            width:              100%;\n            border:             2px solid rgba(225, 225, 225, 0.35);\n        }\n        table, td, th {\n            border-collapse: collapse;\n        }\n        td, th {\n            text-align: left;\n        }\n        tr {\n        }\n        th {\n            font-family:        'Montserrat', sans-serif;\n            font-size:          12pt;\n            font-weight:        600;\n            background-color:   rgba(245, 245, 245, 0.75);\n            color:              black;\n            margin-bottom:      5px;\n        }\n        table th {\n            border-bottom:      2.0px solid rgba(0, 0, 0, 0.4); \n            border-left:        1.5px solid rgba(100, 100, 100, 0.5);\n            border-right:       1.5px solid rgba(100, 100, 100, 0.5);\n        }\n        table tr th:first-child {\n            border-left: 0;\n        }\n        table tr th:last-child {\n            border-right: 0;\n        }\n\n        td {\n            font-family:        'Montserrat', sans-serif;\n            font-weight:        250;\n            font-size:          12pt;\n        }\n        table td {\n            border:             1.5px solid rgba(225, 225, 225, 0.6);\n        }\n        table tr:first-child td {\n            border-top: 0;\n        }\n        table tr td:first-child {\n            border-left: 0;\n        }\n        table tr:last-child td {\n            border-bottom: 0;\n        }\n        table tr td:last-child {\n            border-right: 0;\n        }\n        ";
+        style.innerText = "\n            " + font_css_1.get_fonts() + "\n\n            body {\n                padding:            0px;\n                margin:             0px;\n            }\n            .modal {\n                transition:         0.15s ease-in-out;\n                visibility:         hidden;\n                position:           fixed; \n                left:               0; \n                top:                0;\n                transform:          translate(0, -25px);\n                width:              100%;\n                height:             100%;\n                background-color:   rgba(0, 0, 0, 0.5);\n                z-index:            99999;\n                pointer-events:     none;\n            }\n            .modal-wrap {\n                transition:         0.15s ease-in-out;\n                position:           fixed;\n                width:              50%;\n                left:               50%;\n                top:                50%;\n                transform:          translate(-50%, -50%);\n                filter:             drop-shadow(0px 2px 4px #222233);\n                pointer-events:     none;\n            }\n            .top-styling {\n                min-height:         20px;\n                background-color:   rgba(15, 15, 50, 0.75);\n                border:             3px solid rgba(25, 25, 60, 0.75);\n                color:              white;\n                vertical-align:     middle;\n            }\n            .center-styling {\n                font-family:        'Montserrat', sans-serif;\n                font-weight:        300;\n                font-size:          12pt;\n                background-color:   rgba(255, 255, 255, 0.975);\n                min-height:         40px;\n                max-height:         75vh;\n                overflow:           scroll;\n            }\n            .bottom-styling {\n                font-family:        'Montserrat', sans-serif;\n                font-weight:        300;\n                font-size:          12pt;\n                background-color:   rgba(255, 255, 255, 0.975);\n                min-height:         40px;\n            }\n            .min-padding {\n                padding:            10px;\n            }\n            .max-padding {\n                padding:            20px;\n            }\n            .title {\n                font-family:        'Montserrat', sans-serif;\n                font-size:          15pt;\n                font-weight:        900;\n                color:              white;\n                text-align:         center;\n            }\n            .modal-content {\n                height:             100%;\n            }\n            .content {\n                width:              100%;\n                height:             100%;\n            }\n            .close-btn {\n                float: right; \n                color:              rgb(150, 150, 150);\n                font-size:          24px; \n                font-weight:        bold;\n            }\n            .close-btn:hover {\n                color:              rgb(255, 255, 255);\n            }\n            table {\n                table-layout:       fixed;\n                color:              black;\n                width:              100%;\n                border:             2px solid rgba(225, 225, 225, 0.35);\n            }\n            table, td, th {\n                border-collapse: collapse;\n            }\n            td, th {\n                text-align: left;\n            }\n            tr {\n            }\n            th {\n                font-family:        'Montserrat', sans-serif;\n                font-size:          12pt;\n                font-weight:        600;\n                background-color:   rgba(245, 245, 245, 0.75);\n                color:              black;\n                margin-bottom:      5px;\n            }\n            table th {\n                border-bottom:      2.0px solid rgba(0, 0, 0, 0.4); \n                border-left:        1.5px solid rgba(100, 100, 100, 0.5);\n                border-right:       1.5px solid rgba(100, 100, 100, 0.5);\n            }\n            table tr th:first-child {\n                border-left: 0;\n            }\n            table tr th:last-child {\n                border-right: 0;\n            }\n\n            td {\n                font-family:        'Montserrat', sans-serif;\n                font-weight:        250;\n                font-size:          12pt;\n            }\n            table td {\n                border:             1.5px solid rgba(225, 225, 225, 0.6);\n            }\n            table tr:first-child td {\n                border-top: 0;\n            }\n            table tr td:first-child {\n                border-left: 0;\n            }\n            table tr:last-child td {\n                border-bottom: 0;\n            }\n            table tr td:last-child {\n                border-right: 0;\n            }\n        ";
         _this.shadow.appendChild(style);
         _this.div.classList.add('modal');
-        _this.div.innerHTML = "\n        <div class=\"modal-wrap\">\n            <div class=\"modal-content top-styling min-padding\">\n                <div class='title'></div>\n            </div>\n            <div class=\"modal-content bottom-styling max-padding\">\n                <div class='content'></div>\n            </div>\n            <div class=\"modal-content bottom-styling min-padding\">\n            Wees waakzaam met het delen van persoonlijke informatie op sociale media, bij webshops, in reviews, blogposts en in comments.\n            </div>\n        </div>\n        ";
-        _this.modal_wrap = _this.div.getElementsByClassName('modal-wrap')[0];
-        _this.title_div = _this.modal_wrap.getElementsByClassName('title')[0];
-        var modal_contents = _this.div.getElementsByClassName('modal-content');
-        // let close_button = modal_contents[0].getElementsByClassName("close-btn")[0] as HTMLButtonElement;
-        _this.content_div = modal_contents[1].getElementsByClassName('content')[0];
+        _this.modal_wrap = _this.shadow.ownerDocument.createElement('div');
+        _this.modal_wrap.classList.add('modal-wrap');
+        _this.div.appendChild(_this.modal_wrap);
+        var modal_content_top = _this.shadow.ownerDocument.createElement('div');
+        modal_content_top.classList.add('modal-content', 'top-styling', 'min-padding');
+        _this.title_div = _this.shadow.ownerDocument.createElement('div');
+        _this.title_div.classList.add('title');
+        modal_content_top.appendChild(_this.title_div);
+        _this.modal_wrap.appendChild(modal_content_top);
+        var modal_content_center = _this.shadow.ownerDocument.createElement('div');
+        modal_content_center.classList.add('modal-content', 'center-styling', 'max-padding');
+        _this.content_div = _this.shadow.ownerDocument.createElement('div');
+        _this.content_div.classList.add('content');
+        modal_content_center.appendChild(_this.content_div);
+        _this.modal_wrap.appendChild(modal_content_center);
+        var modal_content_bottom = _this.shadow.ownerDocument.createElement('div');
+        modal_content_bottom.classList.add('modal-content', 'bottom-styling', 'min-padding');
+        modal_content_bottom.innerText = 'Wees waakzaam met het delen van persoonlijke informatie op sociale media,' +
+            ' webshops, blogposts en in comments en reviews.';
+        _this.modal_wrap.appendChild(modal_content_bottom);
+        _this.hide();
         return _this;
-        // close_button.onclick = () => {
-        //    this.hide(); 
-        // };
-        //<!--<span class="close-btn">&times;</span>-->
-        // window.addEventListener('click', () => {
-        //     this.hide(); 
-        // }, false);
     }
     Object.defineProperty(DOMModal.prototype, "pii", {
         set: function (all_pii) {
+            // create table of personally identifiable information
             this.content_div.innerHTML = '';
             if (all_pii.length == 0) {
                 return;

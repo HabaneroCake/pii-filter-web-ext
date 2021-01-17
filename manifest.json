@@ -1,9 +1,12 @@
 {
     "manifest_version": 2,
-    "name": "Personally Identifiable Information Filter",
-    "description": "Notifies the user of excessive usage of PII in a field or request. Provides a severity indicator.",
+    "name": "Personally Identifiable Information Filter (NL)",
+    "description": "Notifies you if there is an excessive usage of PII in a text field.",
     "version": "0.1",
-
+    "icons": {
+        "48": "assets/logos/1/PIILogo.png",
+        "96": "assets/logos/1/PIILogo@2x.png"
+    },
     "permissions": [
         "tabs",
         "activeTab",

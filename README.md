@@ -1,9 +1,9 @@
-# <a name="title">PII Filter Web Extension- personally identifiable information filter</a>
-
-See: [PIIF](https://github.com/prolody/piif)
+# <img src="assets/logos/1/PIILogo512.png" width="48" height="48" /> PII Filter Web Extension (NL)
 
 The PII Filter project aims to build a personally identifiable information (PII) filter for all Dutch users of the
 internet. This repository contains the web-extension code for the PII Filter.
+
+See [this repository](https://github.com/prolody/piif) for the datasets and npm module.
 
 ## Current Limitations:
 - Only tracks text entered in the field which has focus. (previously filled fields are ignored until focused)
@@ -18,11 +18,18 @@ internet. This repository contains the web-extension code for the PII Filter.
   hierarchy, but was hard to maintain. Another option is to only provide feedback directly near the input in the current
   frame.
 
-## Testing:
-- Open Firefox
-- Type `about:debugging` in the address bar
+## Testing (Firefox):
+- type `about:debugging` in the address bar
 - Select `This Firefox` on the left
-- Click `Load Temporary Add-on`
-- Select `manifest.json` inside this folder
-- Wait until the welcome page loads
-- The add-on can now be used
+- click `Load Temporary Add-on`
+- select `manifest.json` inside this folder
+- wait until the welcome page loads
+- the add-on can now be used
+
+## Testing (Chrome):
+- Type `chrome://extensions/` in the address bar
+- enable `developer mode` on the top right
+- click `Load unpacked`
+- select inside this folder
+- wait until the welcome page loads
+- the add-on can now be used
