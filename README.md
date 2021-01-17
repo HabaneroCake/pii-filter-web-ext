@@ -1,4 +1,4 @@
-# ![PII Filter Logo](https://github.com/prolody/piif_web_ext/blob/master/assets/logos/a/PIIlogo.png) Filter Web Extension (NL)
+# ![PII Filter Logo](https://raw.githubusercontent.com/prolody/piif_web_ext/master/assets/logos/a/PIIlogo.png) Filter Web Extension (NL)
 
 The PII Filter project aims to build a personally identifiable information (PII) filter for all Dutch users of the
 internet. This repository contains the web-extension code for the PII Filter.
