@@ -2,7 +2,7 @@ export class ShadowDomDiv
 { 
     protected root_div:     HTMLDivElement;
     protected shadow:       ShadowRoot;
-    protected div:          HTMLDivElement;
+    public div:             HTMLDivElement;
 
     /**
     * creates a shadow div and adds it to the front of the document

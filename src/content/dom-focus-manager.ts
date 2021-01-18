@@ -21,13 +21,18 @@ export class DOMFocusManager
      */
     private focus_in(event: FocusEvent) 
     {
-        let target = event.target as HTMLElement;
+        if (event != null)
+        {
+            let target = event.target as HTMLElement;
 
-        // traverse possible shadow roots
-        while (target.shadowRoot && target.shadowRoot.activeElement)
-            target = target.shadowRoot.activeElement as HTMLElement;
+            // traverse possible shadow roots
+            while (target.shadowRoot && target.shadowRoot.activeElement)
+                target = target.shadowRoot.activeElement as HTMLElement;
 
-        this._active_focus.value = target;
+            this._active_focus.value = target;
+        }
+        else
+            this.focus_out(null);
     }
 
     /**

@@ -1,14 +1,16 @@
-# ![PII Filter Logo](https://raw.githubusercontent.com/prolody/piif_web_ext/master/assets/logos/a/PIIlogo.png) Filter Web Extension (NL)
+# ![PII](https://raw.githubusercontent.com/prolody/piif_web_ext/master/assets/logos/a/PIIlogo.png) Filter Web Extension
 
-The PII Filter project aims to build a personally identifiable information (PII) filter for all Dutch users of the
-internet. This repository contains the web-extension code for the PII Filter.
+This project aims to build a personally identifiable information (PII) filter for all (currently only Dutch) users of 
+the internet. This repository contains the web-extension code for the PII Filter.
 
 See [this repository](https://github.com/prolody/piif) for the datasets and npm module.
 
 ## Current Limitations:
 - Only tracks text entered in the field which has focus. (previously filled fields are ignored until focused)
+- Only supports the Dutch language
 
 ## Future work:
+- Add support for multiple locales.
 - Provide more detailed feedback to the user.
 - Leverage a solution such as [arrive](https://github.com/uzairfarooq/arrive) in order to keep track of fields which
   were added / removed dynamically, in the case that they contain sensitive pre-filled information. Or tailor a solution

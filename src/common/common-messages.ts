@@ -6,6 +6,7 @@ export namespace ICommonMessage
 {
     export enum Type {
         FOCUS,
+        REFOCUS,
         TEXT_ENTERED,
         NOTIFY_PII
     };
@@ -15,6 +16,10 @@ export namespace ICommonMessage
         constructor(
             public readonly valid: boolean,
         ){}
+    };
+    export class Refocus implements ICommonMessage
+    {
+        type: ICommonMessage.Type = ICommonMessage.Type.REFOCUS;
     };
     export class TextEntered implements ICommonMessage
     {

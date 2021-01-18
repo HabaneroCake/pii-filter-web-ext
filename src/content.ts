@@ -9,8 +9,9 @@ namespace PII_Filter
 {
     export class Frame
     {
-        protected input_focus_manager:  DOMFocusManager = new DOMFocusManager(document);
-        protected active_element:       HTMLInputElement;
+        protected input_focus_manager:  DOMFocusManager =       new DOMFocusManager(document);
+        protected active_element_:      HTMLInputElement;
+        protected last_active_element:  HTMLInputElement;
 
         constructor()
         {
@@ -27,6 +28,10 @@ namespace PII_Filter
                             );
                             this.active_element = null;
                             this.input_focus_manager.unfocus();
+                        }
+                        else if (f_event.valid && this.active_element == null && this.last_active_element != null)
+                        {   // restore focus
+                            this.last_active_element.focus()
                         }
                         break;
                     }
@@ -53,14 +58,21 @@ namespace PII_Filter
                     this.active_element.addEventListener('input', this.text_input_listener.bind(this));
                     browser.runtime.sendMessage(null, new ICommonMessage.Focus(true));
                 }
-                else if (this.active_element != null)
+                else 
                 {
                     browser.runtime.sendMessage(null, new ICommonMessage.Focus(false));
                     this.active_element = null;
                 }
-                else
-                    browser.runtime.sendMessage(null, new ICommonMessage.Focus(false));
             });
+        }
+        protected set active_element(element: HTMLInputElement)
+        {
+            this.last_active_element = this.active_element_;
+            this.active_element_ = element;
+        }
+        protected get active_element(): HTMLInputElement
+        {
+            return this.active_element_;
         }
         /**
          * callback for text input
@@ -81,7 +93,7 @@ namespace PII_Filter
     export class Top extends Frame
     {
         // provides an overlay to get user's attention
-        private highlighted_element:    DOMRectHighlight =      null; // (removed rect sum before dev e0f18b0, clarity)
+        // private highlighted_element:    DOMRectHighlight = null; // (removed rect sum before dev e0f18b0, clarity)
         // tags an element with an overlay to provide info to the user
         private info_overlay:           DOMElementInfoOverlay = null;
 
@@ -93,7 +105,12 @@ namespace PII_Filter
                     case ICommonMessage.Type.NOTIFY_PII: {
                         let n_message = message as ICommonMessage.NotifyPII;
                         if (!this.info_overlay)
+                        {
                             this.info_overlay = new DOMElementInfoOverlay(document);
+                            this.info_overlay.on_focus_required.observe((req: boolean) => {
+                                browser.runtime.sendMessage(null, new ICommonMessage.Refocus());
+                            });
+                        }
 
                         this.info_overlay.severity =    n_message.severity_mapping;
                         this.info_overlay.pii =         n_message.pii;

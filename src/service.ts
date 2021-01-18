@@ -41,6 +41,7 @@ export class PIIFilterService
                 throw new Error('Tab already exists.')
 
             let last_focus:     {frame_id: number, valid: boolean} = {frame_id: null, valid: false};
+            let last_valid_focus: number;
             let tab_listener =  ((message: ICommonMessage, sender: Runtime.MessageSender): void => 
             {
                 if (sender.tab.id === tab.id)
@@ -50,7 +51,7 @@ export class PIIFilterService
                         case ICommonMessage.Type.FOCUS: {
                             let f_message = (message as ICommonMessage.Focus);
 
-                            if (last_focus.frame_id &&
+                            if (last_focus.frame_id != null &&
                                 last_focus.frame_id != sender.frameId)
                             {
                                 browser.tabs.sendMessage(
@@ -71,9 +72,27 @@ export class PIIFilterService
                                     {frameId: 0}
                                 );
                             }
+                            else
+                            {
+                                last_valid_focus =  sender.frameId;
+                            }
 
                             last_focus.frame_id =   sender.frameId;
                             last_focus.valid =      f_message.valid;
+                            break;
+                        }
+                        case ICommonMessage.Type.REFOCUS: {
+                            if (last_valid_focus != null)
+                            {
+                                browser.tabs.sendMessage(
+                                    tab.id, 
+                                    new ICommonMessage.Focus(true), 
+                                    {frameId: last_valid_focus}
+                                );
+
+                                last_focus.frame_id =   last_valid_focus;
+                                last_focus.valid =      true;
+                            }
                             break;
                         }
                         // classify text
@@ -83,13 +102,13 @@ export class PIIFilterService
                                 let result = this.pii_filter.classify((message as ICommonMessage.TextEntered).text);
                                 let all_pii = result.pii();
                                 let pii_strings: Array<[Array<string>, number?, number?]> = [
-                                    [new Array('Informatietype', 'Waarde', 'Nadere omschrijving')]
+                                    [new Array('Informatietype', 'Waarde')]
                                 ];
 
                                 for (let pii of all_pii)
                                 {
                                     let classifier_name: string = get_dutch_name(pii.classification.classifier.name);
-                                    pii_strings.push([[classifier_name, pii.text, 'Meer Informatie'],
+                                    pii_strings.push([[classifier_name, pii.text],
                                             pii.classification.score, pii.classification.severity]);
                                         if (!pii.classification.score || !pii.classification.severity)
                                             console.log(pii);

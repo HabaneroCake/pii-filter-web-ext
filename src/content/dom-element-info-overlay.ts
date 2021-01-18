@@ -2,10 +2,13 @@ import { browser } from 'webextension-polyfill-ts';
 import { ShadowDomDiv } from './shadow-dom-div';
 import { DOMModal } from './dom-modal';
 import { get_fonts } from './font_css';
+import { Observable } from '../common/observable';
+
+// TODO: in order to toggle the modal to stay open and update as well some stuff will need to change in focus handling.
+
 /**
  * Provides an overlay with info/slider
  */
-
 export class DOMElementInfoOverlay extends ShadowDomDiv
 {
     protected severity_bar_container:   HTMLDivElement;
@@ -15,8 +18,12 @@ export class DOMElementInfoOverlay extends ShadowDomDiv
     protected modal_window:             DOMModal;
     protected fade_out_timer:           number;
     
+    protected keep_open:                boolean =   false;
     protected mouse_inside:             boolean =   false;
-    public    hide_after_ms:            number =    10000;
+    public hide_after_ms:               number =    10000;
+
+    protected on_focus_required_:                Observable.Variable<boolean> = new Observable.Variable<boolean>(false);
+    public on_focus_required:                    Observable<boolean> = new Observable<boolean>(this.on_focus_required_);
 
     constructor(
         document: Document
@@ -43,55 +50,51 @@ export class DOMElementInfoOverlay extends ShadowDomDiv
                 width:              100%;
                 padding:            0px;
                 border-top-style:   solid;
-                border-top-width:   2px;
-                border-top-color:   rgba(50, 50, 50, 1.0);
+                border-top-width:   1.5px;
+                border-top-color:   rgba(50, 50, 50, 0.75);
                 background-color:   rgba(255, 255, 255, 0.9);
                 z-index:            9999;
                 opacity:            0.0;
             }
             .severity-bar-container {
                 display:            block;
-                visibility:         visible;
                 background-image:   linear-gradient(to right, yellow, orange, red, purple);
-                height:             100%;
                 width:              100%;
+                height:             25px;
             }
             .severity-bar-indicator {
                 transition:         0.75s ease-in;
                 visibility:         visible;
                 background-color:   rgba(255, 255, 255, 0.95);
                 position:           fixed;
-                height:             100%;
                 right:              0%;
                 width:              100%;
+                height:             100%;
             }
             .severity-bar-text {
-                visibility:         visible;
                 display:            flex;
                 justify-content:    center;
-                vertical-align:     middle;
                 flex-wrap:          nowrap;
                 width:              100%;
+                height:             100%;
             }
             .severity-display-item {
                 display:            inline-block;
-                height:             25px;
+                align-self:         center;
                 z-index:            99999;
             }
             .severity-text-span {
-                margin-top:         4px;
                 margin-right:       10px;
-                height:             25px;
                 font-family:        'Montserrat', sans-serif;
                 font-weight:        400;
-                font-size:          11t;
+                font-size:          12pt;
                 color:              black;
+                align-self:         center;
             }
             .info-icon {
-                margin-top:         2px;
+                margin-top:         3px;
                 width:              15px;
-                height:             15px;
-                margin:             0.5px;
+                align-self:         center;
             }
         `;
         this.shadow.appendChild(style);
@@ -114,16 +117,33 @@ export class DOMElementInfoOverlay extends ShadowDomDiv
         img.src = browser.runtime.getURL('assets/info.png');
         img_div.appendChild(img);
 
+        this.div.addEventListener('mousedown', ((x: GlobalEventHandlers, event: MouseEvent) => {
+            this.keep_open = true;
+            this.modal_window.show(true, ((x: GlobalEventHandlers, event: MouseEvent) => {
+                this.modal_window.hide();
+                this.keep_open = false;
+                this.show(this.mouse_inside);
+                this.on_focus_required_.value = true;
+            }).bind(this));
+            this.on_focus_required_.value = true;
+        }).bind(this))
+
         this.div.addEventListener('mouseover', ((x: GlobalEventHandlers, event: MouseEvent) => {
-            this.modal_window.show();
             this.mouse_inside = true;
-            this.show(this.mouse_inside);
+            if (!this.keep_open)
+            {
+                this.modal_window.show();
+                this.show(this.mouse_inside);
+            }
         }).bind(this))
 
         this.div.addEventListener('mouseout', ((x: GlobalEventHandlers, event: MouseEvent) => {
-            this.modal_window.hide();
+            if (!this.keep_open)
+            {
+                this.modal_window.hide();
+                this.start_fade_out_timer();
+            }
             this.mouse_inside = false;
-            this.start_fade_out_timer();
         }).bind(this))
 
         let span_div: HTMLDivElement = this.shadow.ownerDocument.createElement('div');
@@ -158,9 +178,9 @@ export class DOMElementInfoOverlay extends ShadowDomDiv
         this.div.style.opacity =        '1.0';
         this.div.style.height =         '25px';
         this.div.style.visibility =     'visible';
+        this.div.style.pointerEvents =  'auto';
         
         this.clear_fade_out_timer();
-
         if (!keep_open)
             this.start_fade_out_timer();
     }
@@ -170,20 +190,27 @@ export class DOMElementInfoOverlay extends ShadowDomDiv
         this.div.style.opacity =        '0.0';
         this.div.style.height =         '0px';
         this.div.style.visibility =     'hidden';
+        this.div.style.pointerEvents =  'none';
+        this.keep_open =                false;
+        this.modal_window.hide();
     }
 
     public set severity(severity: number)
     {
-        this.severity_bar_indicator.style.width = `${(1-severity) * 100}%`;
+        if (!this.keep_open)
+        {
+            this.severity_bar_indicator.style.width = `${(1-severity) * 100}%`;
 
-        if (severity == 0.0)
-            this.hide();
-        else
-            this.show(this.mouse_inside);
+            if (severity == 0.0)
+                this.hide();
+            else
+                this.show(this.mouse_inside);
+        }
     }
 
     public set pii(all_pii: Array<[Array<string>, number?, number?]>)
     {
-        this.modal_window.pii = all_pii;
+        if (!this.keep_open)
+            this.modal_window.pii = all_pii;
     }
 };

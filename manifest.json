@@ -18,6 +18,7 @@
     },
     "web_accessible_resources": [
         "assets/info.png",
+        "assets/logos/a/PIIlogo.png",
         "assets/fonts/webfonts/*.*"
     ],
     "content_scripts": [{

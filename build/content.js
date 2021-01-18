@@ -1256,8 +1256,9 @@ var ICommonMessage;
     var Type;
     (function (Type) {
         Type[Type["FOCUS"] = 0] = "FOCUS";
-        Type[Type["TEXT_ENTERED"] = 1] = "TEXT_ENTERED";
-        Type[Type["NOTIFY_PII"] = 2] = "NOTIFY_PII";
+        Type[Type["REFOCUS"] = 1] = "REFOCUS";
+        Type[Type["TEXT_ENTERED"] = 2] = "TEXT_ENTERED";
+        Type[Type["NOTIFY_PII"] = 3] = "NOTIFY_PII";
     })(Type = ICommonMessage.Type || (ICommonMessage.Type = {}));
     ;
     var Focus = /** @class */ (function () {
@@ -1268,6 +1269,14 @@ var ICommonMessage;
         return Focus;
     }());
     ICommonMessage.Focus = Focus;
+    ;
+    var Refocus = /** @class */ (function () {
+        function Refocus() {
+            this.type = ICommonMessage.Type.REFOCUS;
+        }
+        return Refocus;
+    }());
+    ICommonMessage.Refocus = Refocus;
     ;
     var TextEntered = /** @class */ (function () {
         function TextEntered(text) {
@@ -1332,7 +1341,9 @@ var Observable = /** @class */ (function () {
 exports.Observable = Observable;
 (function (Observable) {
     var Variable = /** @class */ (function () {
-        function Variable() {
+        function Variable(notify_on_diff_only) {
+            if (notify_on_diff_only === void 0) { notify_on_diff_only = true; }
+            this.notify_on_diff_only = notify_on_diff_only;
             this._observers = new Array();
             this._value = null;
         }
@@ -1345,7 +1356,7 @@ exports.Observable = Observable;
              */
             set: function (new_value) {
                 var _this = this;
-                if (this.value !== new_value) {
+                if (!this.notify_on_diff_only || this.value !== new_value) {
                     this._value = new_value;
                     this._observers.forEach(function (callback) {
                         callback(_this.value);
@@ -1446,6 +1457,9 @@ var PII_Filter;
                             _this.active_element = null;
                             _this.input_focus_manager.unfocus();
                         }
+                        else if (f_event.valid && _this.active_element == null && _this.last_active_element != null) { // restore focus
+                            _this.last_active_element.focus();
+                        }
                         break;
                     }
                     default: {
@@ -1465,14 +1479,23 @@ var PII_Filter;
                     _this.active_element.addEventListener('input', _this.text_input_listener.bind(_this));
                     webextension_polyfill_ts_1.browser.runtime.sendMessage(null, new common_messages_1.ICommonMessage.Focus(true));
                 }
-                else if (_this.active_element != null) {
+                else {
                     webextension_polyfill_ts_1.browser.runtime.sendMessage(null, new common_messages_1.ICommonMessage.Focus(false));
                     _this.active_element = null;
                 }
-                else
-                    webextension_polyfill_ts_1.browser.runtime.sendMessage(null, new common_messages_1.ICommonMessage.Focus(false));
             });
         }
+        Object.defineProperty(Frame.prototype, "active_element", {
+            get: function () {
+                return this.active_element_;
+            },
+            set: function (element) {
+                this.last_active_element = this.active_element_;
+                this.active_element_ = element;
+            },
+            enumerable: false,
+            configurable: true
+        });
         /**
          * callback for text input
          * @param event not used
@@ -1493,15 +1516,19 @@ var PII_Filter;
         function Top() {
             var _this = _super.call(this) || this;
             // provides an overlay to get user's attention
-            _this.highlighted_element = null; // (removed rect sum before dev e0f18b0, clarity)
+            // private highlighted_element:    DOMRectHighlight = null; // (removed rect sum before dev e0f18b0, clarity)
             // tags an element with an overlay to provide info to the user
             _this.info_overlay = null;
             webextension_polyfill_ts_1.browser.runtime.onMessage.addListener(function (message, sender) {
                 switch (message.type) {
                     case common_messages_1.ICommonMessage.Type.NOTIFY_PII: {
                         var n_message = message;
-                        if (!_this.info_overlay)
+                        if (!_this.info_overlay) {
                             _this.info_overlay = new dom_element_info_overlay_1.DOMElementInfoOverlay(document);
+                            _this.info_overlay.on_focus_required.observe(function (req) {
+                                webextension_polyfill_ts_1.browser.runtime.sendMessage(null, new common_messages_1.ICommonMessage.Refocus());
+                            });
+                        }
                         _this.info_overlay.severity = n_message.severity_mapping;
                         _this.info_overlay.pii = n_message.pii;
                         break;
@@ -1550,6 +1577,8 @@ var webextension_polyfill_ts_1 = require("webextension-polyfill-ts");
 var shadow_dom_div_1 = require("./shadow-dom-div");
 var dom_modal_1 = require("./dom-modal");
 var font_css_1 = require("./font_css");
+var observable_1 = require("../common/observable");
+// TODO: in order to toggle the modal to stay open and update as well some stuff will need to change in focus handling.
 /**
  * Provides an overlay with info/slider
  */
@@ -1557,12 +1586,15 @@ var DOMElementInfoOverlay = /** @class */ (function (_super) {
     __extends(DOMElementInfoOverlay, _super);
     function DOMElementInfoOverlay(document) {
         var _this = _super.call(this, document) || this;
+        _this.keep_open = false;
         _this.mouse_inside = false;
         _this.hide_after_ms = 10000;
+        _this.on_focus_required_ = new observable_1.Observable.Variable(false);
+        _this.on_focus_required = new observable_1.Observable(_this.on_focus_required_);
         _this.modal_window = new dom_modal_1.DOMModal(document);
         _this.modal_window.title_div.innerText = 'Informatie in het huidige tekstveld:';
         var style = _this.shadow.ownerDocument.createElement('style');
-        style.innerText = "    \n            " + font_css_1.get_fonts() + "\n\n            body {\n                padding:            0px;\n                margin:             0px;\n            }\n            .severity-bar-outer {\n                transition:         0.25s ease-in;\n                display:            block;\n                visibility:         visible;\n                position:           fixed;\n                height:             0px;\n                bottom:             0%;\n                width:              100%;\n                padding:            0px;\n                border-top-style:   solid;\n                border-top-width:   2px;\n                border-top-color:   rgba(50, 50, 50, 1.0);\n                background-color:   rgba(255, 255, 255, 0.9);\n                z-index:            9999;\n                opacity:            0.0;\n            }\n            .severity-bar-container {\n                display:            block;\n                visibility:         visible;\n                background-image:   linear-gradient(to right, yellow, orange, red, purple);\n                height:             100%;\n                width:              100%;\n            }\n            .severity-bar-indicator {\n                transition:         0.75s ease-in;\n                visibility:         visible;\n                background-color:   rgba(255, 255, 255, 0.95);\n                position:           fixed;\n                height:             100%;\n                right:              0%;\n                width:              100%;\n            }\n            .severity-bar-text {\n                visibility:         visible;\n                display:            flex;\n                justify-content:    center;\n                vertical-align:     middle;\n                flex-wrap:          nowrap;\n                width:              100%;\n            }\n            .severity-display-item {\n                display:            inline-block;\n                height:             25px;\n                z-index:            99999;\n            }\n            .severity-text-span {\n                margin-top:         4px;\n                margin-right:       10px;\n                height:             25px;\n                font-family:        'Montserrat', sans-serif;\n                font-weight:        400;\n                font-size:          11t;\n                color:              black;\n            }\n            .info-icon {\n                margin-top:         2px;\n                width:              15px;\n                height:             15px;\n                margin:             0.5px;\n            }\n        ";
+        style.innerText = "    \n            " + font_css_1.get_fonts() + "\n\n            body {\n                padding:            0px;\n                margin:             0px;\n            }\n            .severity-bar-outer {\n                transition:         0.25s ease-in;\n                display:            block;\n                visibility:         visible;\n                position:           fixed;\n                height:             0px;\n                bottom:             0%;\n                width:              100%;\n                padding:            0px;\n                border-top-style:   solid;\n                border-top-width:   1.5px;\n                border-top-color:   rgba(50, 50, 50, 0.75);\n                background-color:   rgba(255, 255, 255, 0.9);\n                z-index:            9999;\n                opacity:            0.0;\n            }\n            .severity-bar-container {\n                display:            block;\n                background-image:   linear-gradient(to right, yellow, orange, red, purple);\n                width:              100%;\n                height:             25px;\n            }\n            .severity-bar-indicator {\n                transition:         0.75s ease-in;\n                visibility:         visible;\n                background-color:   rgba(255, 255, 255, 0.95);\n                position:           fixed;\n                right:              0%;\n                width:              100%;\n                height:             100%;\n            }\n            .severity-bar-text {\n                display:            flex;\n                justify-content:    center;\n                flex-wrap:          nowrap;\n                width:              100%;\n                height:             100%;\n            }\n            .severity-display-item {\n                display:            inline-block;\n                align-self:         center;\n                z-index:            99999;\n            }\n            .severity-text-span {\n                margin-right:       10px;\n                font-family:        'Montserrat', sans-serif;\n                font-weight:        400;\n                font-size:          12pt;\n                color:              black;\n                align-self:         center;\n            }\n            .info-icon {\n                margin-top:         3px;\n                width:              15px;\n                align-self:         center;\n            }\n        ";
         _this.shadow.appendChild(style);
         _this.div.classList.add('severity-bar-outer');
         _this.severity_bar_container = _this.shadow.ownerDocument.createElement('div');
@@ -1579,15 +1611,29 @@ var DOMElementInfoOverlay = /** @class */ (function (_super) {
         img.classList.add('info-icon');
         img.src = webextension_polyfill_ts_1.browser.runtime.getURL('assets/info.png');
         img_div.appendChild(img);
+        _this.div.addEventListener('mousedown', (function (x, event) {
+            _this.keep_open = true;
+            _this.modal_window.show(true, (function (x, event) {
+                _this.modal_window.hide();
+                _this.keep_open = false;
+                _this.show(_this.mouse_inside);
+                _this.on_focus_required_.value = true;
+            }).bind(_this));
+            _this.on_focus_required_.value = true;
+        }).bind(_this));
         _this.div.addEventListener('mouseover', (function (x, event) {
-            _this.modal_window.show();
             _this.mouse_inside = true;
-            _this.show(_this.mouse_inside);
+            if (!_this.keep_open) {
+                _this.modal_window.show();
+                _this.show(_this.mouse_inside);
+            }
         }).bind(_this));
         _this.div.addEventListener('mouseout', (function (x, event) {
-            _this.modal_window.hide();
+            if (!_this.keep_open) {
+                _this.modal_window.hide();
+                _this.start_fade_out_timer();
+            }
             _this.mouse_inside = false;
-            _this.start_fade_out_timer();
         }).bind(_this));
         var span_div = _this.shadow.ownerDocument.createElement('div');
         span_div.classList.add('severity-display-item');
@@ -1617,6 +1663,7 @@ var DOMElementInfoOverlay = /** @class */ (function (_super) {
         this.div.style.opacity = '1.0';
         this.div.style.height = '25px';
         this.div.style.visibility = 'visible';
+        this.div.style.pointerEvents = 'auto';
         this.clear_fade_out_timer();
         if (!keep_open)
             this.start_fade_out_timer();
@@ -1625,21 +1672,27 @@ var DOMElementInfoOverlay = /** @class */ (function (_super) {
         this.div.style.opacity = '0.0';
         this.div.style.height = '0px';
         this.div.style.visibility = 'hidden';
+        this.div.style.pointerEvents = 'none';
+        this.keep_open = false;
+        this.modal_window.hide();
     };
     Object.defineProperty(DOMElementInfoOverlay.prototype, "severity", {
         set: function (severity) {
-            this.severity_bar_indicator.style.width = (1 - severity) * 100 + "%";
-            if (severity == 0.0)
-                this.hide();
-            else
-                this.show(this.mouse_inside);
+            if (!this.keep_open) {
+                this.severity_bar_indicator.style.width = (1 - severity) * 100 + "%";
+                if (severity == 0.0)
+                    this.hide();
+                else
+                    this.show(this.mouse_inside);
+            }
         },
         enumerable: false,
         configurable: true
     });
     Object.defineProperty(DOMElementInfoOverlay.prototype, "pii", {
         set: function (all_pii) {
-            this.modal_window.pii = all_pii;
+            if (!this.keep_open)
+                this.modal_window.pii = all_pii;
         },
         enumerable: false,
         configurable: true
@@ -1649,7 +1702,7 @@ var DOMElementInfoOverlay = /** @class */ (function (_super) {
 exports.DOMElementInfoOverlay = DOMElementInfoOverlay;
 ;
 
-},{"./dom-modal":10,"./font_css":11,"./shadow-dom-div":12,"webextension-polyfill-ts":1}],9:[function(require,module,exports){
+},{"../common/observable":5,"./dom-modal":10,"./font_css":11,"./shadow-dom-div":12,"webextension-polyfill-ts":1}],9:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DOMFocusManager = void 0;
@@ -1670,11 +1723,15 @@ var DOMFocusManager = /** @class */ (function () {
      * @param event the event
      */
     DOMFocusManager.prototype.focus_in = function (event) {
-        var target = event.target;
-        // traverse possible shadow roots
-        while (target.shadowRoot && target.shadowRoot.activeElement)
-            target = target.shadowRoot.activeElement;
-        this._active_focus.value = target;
+        if (event != null) {
+            var target = event.target;
+            // traverse possible shadow roots
+            while (target.shadowRoot && target.shadowRoot.activeElement)
+                target = target.shadowRoot.activeElement;
+            this._active_focus.value = target;
+        }
+        else
+            this.focus_out(null);
     };
     /**
      * callback for focusout event
@@ -1712,6 +1769,7 @@ var __extends = (this && this.__extends) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DOMModal = void 0;
+var webextension_polyfill_ts_1 = require("webextension-polyfill-ts");
 var shadow_dom_div_1 = require("./shadow-dom-div");
 var font_css_1 = require("./font_css");
 var DOMModal = /** @class */ (function (_super) {
@@ -1719,7 +1777,7 @@ var DOMModal = /** @class */ (function (_super) {
     function DOMModal(document) {
         var _this = _super.call(this, document) || this;
         var style = _this.shadow.ownerDocument.createElement('style');
-        style.innerText = "\n            " + font_css_1.get_fonts() + "\n\n            body {\n                padding:            0px;\n                margin:             0px;\n            }\n            .modal {\n                transition:         0.15s ease-in-out;\n                visibility:         hidden;\n                position:           fixed; \n                left:               0; \n                top:                0;\n                transform:          translate(0, -25px);\n                width:              100%;\n                height:             100%;\n                background-color:   rgba(0, 0, 0, 0.5);\n                z-index:            99999;\n                pointer-events:     none;\n            }\n            .modal-wrap {\n                transition:         0.15s ease-in-out;\n                position:           fixed;\n                width:              50%;\n                left:               50%;\n                top:                50%;\n                transform:          translate(-50%, -50%);\n                filter:             drop-shadow(0px 2px 4px #222233);\n                pointer-events:     none;\n            }\n            .top-styling {\n                min-height:         20px;\n                background-color:   rgba(15, 15, 50, 0.75);\n                border:             3px solid rgba(25, 25, 60, 0.75);\n                color:              white;\n                vertical-align:     middle;\n            }\n            .center-styling {\n                font-family:        'Montserrat', sans-serif;\n                font-weight:        300;\n                font-size:          12pt;\n                background-color:   rgba(255, 255, 255, 0.975);\n                min-height:         40px;\n                max-height:         75vh;\n                overflow:           scroll;\n            }\n            .bottom-styling {\n                font-family:        'Montserrat', sans-serif;\n                font-weight:        300;\n                font-size:          12pt;\n                background-color:   rgba(255, 255, 255, 0.975);\n                min-height:         40px;\n            }\n            .min-padding {\n                padding:            10px;\n            }\n            .max-padding {\n                padding:            20px;\n            }\n            .title {\n                font-family:        'Montserrat', sans-serif;\n                font-size:          15pt;\n                font-weight:        900;\n                color:              white;\n                text-align:         center;\n            }\n            .modal-content {\n                height:             100%;\n            }\n            .content {\n                width:              100%;\n                height:             100%;\n            }\n            .close-btn {\n                float: right; \n                color:              rgb(150, 150, 150);\n                font-size:          24px; \n                font-weight:        bold;\n            }\n            .close-btn:hover {\n                color:              rgb(255, 255, 255);\n            }\n            table {\n                table-layout:       fixed;\n                color:              black;\n                width:              100%;\n                border:             2px solid rgba(225, 225, 225, 0.35);\n            }\n            table, td, th {\n                border-collapse: collapse;\n            }\n            td, th {\n                text-align: left;\n            }\n            tr {\n            }\n            th {\n                font-family:        'Montserrat', sans-serif;\n                font-size:          12pt;\n                font-weight:        600;\n                background-color:   rgba(245, 245, 245, 0.75);\n                color:              black;\n                margin-bottom:      5px;\n            }\n            table th {\n                border-bottom:      2.0px solid rgba(0, 0, 0, 0.4); \n                border-left:        1.5px solid rgba(100, 100, 100, 0.5);\n                border-right:       1.5px solid rgba(100, 100, 100, 0.5);\n            }\n            table tr th:first-child {\n                border-left: 0;\n            }\n            table tr th:last-child {\n                border-right: 0;\n            }\n\n            td {\n                font-family:        'Montserrat', sans-serif;\n                font-weight:        250;\n                font-size:          12pt;\n            }\n            table td {\n                border:             1.5px solid rgba(225, 225, 225, 0.6);\n            }\n            table tr:first-child td {\n                border-top: 0;\n            }\n            table tr td:first-child {\n                border-left: 0;\n            }\n            table tr:last-child td {\n                border-bottom: 0;\n            }\n            table tr td:last-child {\n                border-right: 0;\n            }\n        ";
+        style.innerText = "\n            " + font_css_1.get_fonts() + "\n\n            body {\n                padding:            0px;\n                margin:             0px;\n            }\n            .modal {\n                transition:         0.15s ease-in-out;\n                visibility:         hidden;\n                position:           fixed; \n                left:               0; \n                top:                0;\n                transform:          translate(0, -25px);\n                width:              100%;\n                height:             100%;\n                background-color:   rgba(0, 0, 0, 0.5);\n                z-index:            99999;\n            }\n            .modal-wrap {\n                transition:         0.15s ease-in-out;\n                position:           fixed;\n                min-width:          10cm;\n                max-width:          20cm;\n                width:              50%;\n                left:               50%;\n                top:                50%;\n                transform:          translate(-50%, -50%);\n                filter:             drop-shadow(0px 2px 4px #222233);\n            }\n            .top-styling {\n                display:            flex;\n                min-height:         20px;\n                background-color:   rgba(15, 15, 50, 0.75);\n                border:             3px solid rgba(25, 25, 60, 0.75);\n                color:              white;\n                vertical-align:     middle;\n            }\n            .center-styling {\n                font-family:        'Montserrat', sans-serif;\n                font-weight:        300;\n                font-size:          12pt;\n                background-color:   rgba(255, 255, 255, 0.975);\n                min-height:         40px;\n                max-height:         75vh;\n                overflow:           auto;\n            }\n            .bottom-styling {\n                font-family:        'Montserrat', sans-serif;\n                font-weight:        300;\n                font-size:          12pt;\n                background-color:   rgba(245, 245, 245, 0.975);\n                min-height:         40px;\n                padding:            10px;\n                padding-left:       30px;\n                padding-right:      30px;\n                text-align:         left;\n            }\n            .min-padding {\n                padding:            10px;\n            }\n            .max-padding {\n                padding:            20px;\n            }\n            .pii-icon {\n                height:             40px;\n            }\n            .logo {\n                display:            inline-block;\n                user-select:        none;\n                align-self:         center;\n                margin:             0 auto;\n            }\n            .title {\n                flex:               1;\n                display:            inline-block;\n                font-family:        'Montserrat', sans-serif;\n                font-size:          15pt;\n                font-weight:        900;\n                color:              white;\n                text-align:         center;\n                align-self:         center;\n                margin:             0 auto;\n            }\n            .modal-content {\n                height:             100%;\n            }\n            .content {\n                width:              100%;\n                height:             100%;\n            }\n            .close-btn {\n                display:            inline-block;\n                align-self:         center;\n                margin:             0 auto;\n                color:              rgb(150, 150, 150);\n                font-size:          24px; \n                font-weight:        bold;\n                user-select:        none;\n            }\n            .close-btn:hover {\n                color:              rgb(255, 255, 255);\n            }\n            table {\n                table-layout:       fixed;\n                color:              black;\n                width:              100%;\n                border:             2px solid rgba(225, 225, 225, 0.35);\n            }\n            table, td, th {\n                border-collapse: collapse;\n            }\n            td, th {\n                text-align:         center;\n            }\n            tr {\n            }\n            th {\n                font-family:        'Montserrat', sans-serif;\n                font-size:          12pt;\n                font-weight:        500;\n                background-color:   rgba(245, 245, 245, 0.75);\n                color:              black;\n                margin-bottom:      5px;\n                padding-left:       7px;\n                padding-right:      7px;\n            }\n            table th {\n                border-bottom:      2.0px solid rgba(0, 0, 0, 0.4); \n                border-left:        1.5px solid rgba(100, 100, 100, 0.5);\n                border-right:       1.5px solid rgba(100, 100, 100, 0.5);\n            }\n            table tr th:first-child {\n                border-left: 0;\n            }\n            table tr th:last-child {\n                border-right: 0;\n            }\n\n            td {\n                font-family:        'Montserrat', sans-serif;\n                font-weight:        250;\n                font-size:          12pt;\n                padding-left:       5px;\n                word-wrap:          anywhere;\n            }\n            table td {\n                border:             1.5px solid rgba(225, 225, 225, 0.6);\n            }\n            table tr:first-child td {\n                border-top:         0;\n            }\n            table tr td:first-child {\n                border-left:        0;\n            }\n            table tr:last-child td {\n                border-bottom:      0;\n            }\n            table tr td:last-child {\n                border-right:       0;\n            }\n        ";
         _this.shadow.appendChild(style);
         _this.div.classList.add('modal');
         _this.modal_wrap = _this.shadow.ownerDocument.createElement('div');
@@ -1727,9 +1785,25 @@ var DOMModal = /** @class */ (function (_super) {
         _this.div.appendChild(_this.modal_wrap);
         var modal_content_top = _this.shadow.ownerDocument.createElement('div');
         modal_content_top.classList.add('modal-content', 'top-styling', 'min-padding');
+        var img_div = _this.shadow.ownerDocument.createElement('div');
+        img_div.classList.add('logo');
+        var img = _this.shadow.ownerDocument.createElement('img');
+        img.classList.add('pii-icon');
+        img.src = webextension_polyfill_ts_1.browser.runtime.getURL('assets/logos/a/PIIlogo.png');
+        img_div.appendChild(img);
+        modal_content_top.appendChild(img_div);
         _this.title_div = _this.shadow.ownerDocument.createElement('div');
         _this.title_div.classList.add('title');
         modal_content_top.appendChild(_this.title_div);
+        _this.close_btn = _this.shadow.ownerDocument.createElement('div');
+        _this.close_btn.classList.add('close-btn');
+        _this.close_btn.innerHTML = '&times;';
+        _this.close_btn.style.visibility = 'none';
+        _this.close_btn.addEventListener('mousedown', (function (x, event) {
+            if (_this.on_closed != null)
+                _this.on_closed(x, event);
+        }).bind(_this));
+        modal_content_top.appendChild(_this.close_btn);
         _this.modal_wrap.appendChild(modal_content_top);
         var modal_content_center = _this.shadow.ownerDocument.createElement('div');
         modal_content_center.classList.add('modal-content', 'center-styling', 'max-padding');
@@ -1738,7 +1812,7 @@ var DOMModal = /** @class */ (function (_super) {
         modal_content_center.appendChild(_this.content_div);
         _this.modal_wrap.appendChild(modal_content_center);
         var modal_content_bottom = _this.shadow.ownerDocument.createElement('div');
-        modal_content_bottom.classList.add('modal-content', 'bottom-styling', 'min-padding');
+        modal_content_bottom.classList.add('modal-content', 'bottom-styling');
         modal_content_bottom.innerText = 'Wees waakzaam met het delen van persoonlijke informatie op sociale media,' +
             ' webshops, blogposts en in comments en reviews.';
         _this.modal_wrap.appendChild(modal_content_bottom);
@@ -1780,22 +1854,33 @@ var DOMModal = /** @class */ (function (_super) {
         enumerable: false,
         configurable: true
     });
-    DOMModal.prototype.show = function () {
+    DOMModal.prototype.show = function (with_close_button, fn) {
+        if (with_close_button === void 0) { with_close_button = false; }
+        if (fn === void 0) { fn = null; }
+        if (with_close_button) {
+            this.close_btn.style.visibility = 'visible';
+            this.on_closed = fn;
+        }
+        else {
+            this.close_btn.style.visibility = 'hidden';
+        }
         this.modal_wrap.style.top = '50%';
         this.div.style.opacity = '1.0';
         this.div.style.visibility = 'visible';
+        this.div.style.pointerEvents = 'auto';
     };
     DOMModal.prototype.hide = function () {
         this.modal_wrap.style.top = '55%';
         this.div.style.opacity = '0.0';
         this.div.style.visibility = 'hidden';
+        this.div.style.pointerEvents = 'none';
     };
     return DOMModal;
 }(shadow_dom_div_1.ShadowDomDiv));
 exports.DOMModal = DOMModal;
 ;
 
-},{"./font_css":11,"./shadow-dom-div":12}],11:[function(require,module,exports){
+},{"./font_css":11,"./shadow-dom-div":12,"webextension-polyfill-ts":1}],11:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.get_fonts = void 0;
