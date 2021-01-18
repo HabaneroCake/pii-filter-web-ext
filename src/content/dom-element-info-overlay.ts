@@ -15,6 +15,8 @@ export class DOMElementInfoOverlay extends ShadowDomDiv
     protected severity_bar_indicator:   HTMLDivElement;
     protected severity_bar_text_div:    HTMLDivElement;
 
+    protected severity_:                number =    0;
+
     protected modal_window:             DOMModal;
     protected fade_out_timer:           number;
     
@@ -141,7 +143,7 @@ export class DOMElementInfoOverlay extends ShadowDomDiv
             if (!this.keep_open)
             {
                 this.modal_window.hide();
-                this.start_fade_out_timer();
+                this.restart_fade_out_timer();
             }
             this.mouse_inside = false;
         }).bind(this))
@@ -159,13 +161,13 @@ export class DOMElementInfoOverlay extends ShadowDomDiv
         this.hide();
     }
 
-    private clear_fade_out_timer()
+    public clear_fade_out_timer()
     {
         if (this.fade_out_timer)
             window.clearTimeout(this.fade_out_timer);
     }
     
-    private start_fade_out_timer()
+    public restart_fade_out_timer()
     {
         this.clear_fade_out_timer();
         this.fade_out_timer = window.setTimeout(() => {
@@ -182,7 +184,7 @@ export class DOMElementInfoOverlay extends ShadowDomDiv
         
         this.clear_fade_out_timer();
         if (!keep_open)
-            this.start_fade_out_timer();
+            this.restart_fade_out_timer();
     }
 
     public hide()
@@ -195,8 +197,15 @@ export class DOMElementInfoOverlay extends ShadowDomDiv
         this.modal_window.hide();
     }
 
+    public get severity()
+    {
+        return this.severity_;
+    }
+
     public set severity(severity: number)
     {
+        this.severity_ = severity;
+
         if (!this.keep_open)
         {
             this.severity_bar_indicator.style.width = `${(1-severity) * 100}%`;

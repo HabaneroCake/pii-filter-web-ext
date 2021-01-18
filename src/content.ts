@@ -67,8 +67,8 @@ namespace PII_Filter
         }
         protected set active_element(element: HTMLInputElement)
         {
-            this.last_active_element = this.active_element_;
-            this.active_element_ = element;
+            this.last_active_element =  this.active_element_;
+            this.active_element_ =      element;
         }
         protected get active_element(): HTMLInputElement
         {
@@ -96,7 +96,6 @@ namespace PII_Filter
         // private highlighted_element:    DOMRectHighlight = null; // (removed rect sum before dev e0f18b0, clarity)
         // tags an element with an overlay to provide info to the user
         private info_overlay:           DOMElementInfoOverlay = null;
-
         constructor()
         {
             super();
@@ -104,17 +103,11 @@ namespace PII_Filter
                 switch(message.type) {
                     case ICommonMessage.Type.NOTIFY_PII: {
                         let n_message = message as ICommonMessage.NotifyPII;
-                        if (!this.info_overlay)
-                        {
-                            this.info_overlay = new DOMElementInfoOverlay(document);
-                            this.info_overlay.on_focus_required.observe((req: boolean) => {
-                                browser.runtime.sendMessage(null, new ICommonMessage.Refocus());
-                            });
-                        }
-
-                        this.info_overlay.severity =    n_message.severity_mapping;
-                        this.info_overlay.pii =         n_message.pii;
-
+                        this.update_overlay(n_message.severity_mapping, n_message.pii);
+                        break;
+                    }
+                    case ICommonMessage.Type.NOTIFY_PII_PARSING: {
+                        this.info_overlay.restart_fade_out_timer();
                         break;
                     }
                     default: {
@@ -122,6 +115,22 @@ namespace PII_Filter
                     }
                 }
             });
+        }
+
+        private update_overlay(severity: number = this.info_overlay.severity, pii?: Array<[string[], number?, number?]>)
+        {
+            if (this.info_overlay == null)
+            {
+                this.info_overlay = new DOMElementInfoOverlay(document);
+                this.info_overlay.on_focus_required.observe((req: boolean) => {
+                    browser.runtime.sendMessage(null, new ICommonMessage.Refocus());
+                });
+            }
+            
+            this.info_overlay.severity = severity;
+
+            if (pii != null)
+                this.info_overlay.pii = pii;
         }
     };
 

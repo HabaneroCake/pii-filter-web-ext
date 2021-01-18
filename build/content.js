@@ -1259,6 +1259,7 @@ var ICommonMessage;
         Type[Type["REFOCUS"] = 1] = "REFOCUS";
         Type[Type["TEXT_ENTERED"] = 2] = "TEXT_ENTERED";
         Type[Type["NOTIFY_PII"] = 3] = "NOTIFY_PII";
+        Type[Type["NOTIFY_PII_PARSING"] = 4] = "NOTIFY_PII_PARSING";
     })(Type = ICommonMessage.Type || (ICommonMessage.Type = {}));
     ;
     var Focus = /** @class */ (function () {
@@ -1286,6 +1287,14 @@ var ICommonMessage;
         return TextEntered;
     }());
     ICommonMessage.TextEntered = TextEntered;
+    ;
+    var NotifyPIIParsing = /** @class */ (function () {
+        function NotifyPIIParsing() {
+            this.type = ICommonMessage.Type.NOTIFY_PII_PARSING;
+        }
+        return NotifyPIIParsing;
+    }());
+    ICommonMessage.NotifyPIIParsing = NotifyPIIParsing;
     ;
     var NotifyPII = /** @class */ (function () {
         function NotifyPII(severity_mapping, pii) {
@@ -1523,14 +1532,11 @@ var PII_Filter;
                 switch (message.type) {
                     case common_messages_1.ICommonMessage.Type.NOTIFY_PII: {
                         var n_message = message;
-                        if (!_this.info_overlay) {
-                            _this.info_overlay = new dom_element_info_overlay_1.DOMElementInfoOverlay(document);
-                            _this.info_overlay.on_focus_required.observe(function (req) {
-                                webextension_polyfill_ts_1.browser.runtime.sendMessage(null, new common_messages_1.ICommonMessage.Refocus());
-                            });
-                        }
-                        _this.info_overlay.severity = n_message.severity_mapping;
-                        _this.info_overlay.pii = n_message.pii;
+                        _this.update_overlay(n_message.severity_mapping, n_message.pii);
+                        break;
+                    }
+                    case common_messages_1.ICommonMessage.Type.NOTIFY_PII_PARSING: {
+                        _this.info_overlay.restart_fade_out_timer();
                         break;
                     }
                     default: {
@@ -1540,6 +1546,18 @@ var PII_Filter;
             });
             return _this;
         }
+        Top.prototype.update_overlay = function (severity, pii) {
+            if (severity === void 0) { severity = this.info_overlay.severity; }
+            if (this.info_overlay == null) {
+                this.info_overlay = new dom_element_info_overlay_1.DOMElementInfoOverlay(document);
+                this.info_overlay.on_focus_required.observe(function (req) {
+                    webextension_polyfill_ts_1.browser.runtime.sendMessage(null, new common_messages_1.ICommonMessage.Refocus());
+                });
+            }
+            this.info_overlay.severity = severity;
+            if (pii != null)
+                this.info_overlay.pii = pii;
+        };
         return Top;
     }(Frame));
     PII_Filter.Top = Top;
@@ -1586,6 +1604,7 @@ var DOMElementInfoOverlay = /** @class */ (function (_super) {
     __extends(DOMElementInfoOverlay, _super);
     function DOMElementInfoOverlay(document) {
         var _this = _super.call(this, document) || this;
+        _this.severity_ = 0;
         _this.keep_open = false;
         _this.mouse_inside = false;
         _this.hide_after_ms = 10000;
@@ -1631,7 +1650,7 @@ var DOMElementInfoOverlay = /** @class */ (function (_super) {
         _this.div.addEventListener('mouseout', (function (x, event) {
             if (!_this.keep_open) {
                 _this.modal_window.hide();
-                _this.start_fade_out_timer();
+                _this.restart_fade_out_timer();
             }
             _this.mouse_inside = false;
         }).bind(_this));
@@ -1651,7 +1670,7 @@ var DOMElementInfoOverlay = /** @class */ (function (_super) {
         if (this.fade_out_timer)
             window.clearTimeout(this.fade_out_timer);
     };
-    DOMElementInfoOverlay.prototype.start_fade_out_timer = function () {
+    DOMElementInfoOverlay.prototype.restart_fade_out_timer = function () {
         var _this = this;
         this.clear_fade_out_timer();
         this.fade_out_timer = window.setTimeout(function () {
@@ -1666,7 +1685,7 @@ var DOMElementInfoOverlay = /** @class */ (function (_super) {
         this.div.style.pointerEvents = 'auto';
         this.clear_fade_out_timer();
         if (!keep_open)
-            this.start_fade_out_timer();
+            this.restart_fade_out_timer();
     };
     DOMElementInfoOverlay.prototype.hide = function () {
         this.div.style.opacity = '0.0';
@@ -1677,7 +1696,11 @@ var DOMElementInfoOverlay = /** @class */ (function (_super) {
         this.modal_window.hide();
     };
     Object.defineProperty(DOMElementInfoOverlay.prototype, "severity", {
+        get: function () {
+            return this.severity_;
+        },
         set: function (severity) {
+            this.severity_ = severity;
             if (!this.keep_open) {
                 this.severity_bar_indicator.style.width = (1 - severity) * 100 + "%";
                 if (severity == 0.0)
@@ -1777,7 +1800,7 @@ var DOMModal = /** @class */ (function (_super) {
     function DOMModal(document) {
         var _this = _super.call(this, document) || this;
         var style = _this.shadow.ownerDocument.createElement('style');
-        style.innerText = "\n            " + font_css_1.get_fonts() + "\n\n            body {\n                padding:            0px;\n                margin:             0px;\n            }\n            .modal {\n                transition:         0.15s ease-in-out;\n                visibility:         hidden;\n                position:           fixed; \n                left:               0; \n                top:                0;\n                transform:          translate(0, -25px);\n                width:              100%;\n                height:             100%;\n                background-color:   rgba(0, 0, 0, 0.5);\n                z-index:            99999;\n            }\n            .modal-wrap {\n                transition:         0.15s ease-in-out;\n                position:           fixed;\n                min-width:          10cm;\n                max-width:          20cm;\n                width:              50%;\n                left:               50%;\n                top:                50%;\n                transform:          translate(-50%, -50%);\n                filter:             drop-shadow(0px 2px 4px #222233);\n            }\n            .top-styling {\n                display:            flex;\n                min-height:         20px;\n                background-color:   rgba(15, 15, 50, 0.75);\n                border:             3px solid rgba(25, 25, 60, 0.75);\n                color:              white;\n                vertical-align:     middle;\n            }\n            .center-styling {\n                font-family:        'Montserrat', sans-serif;\n                font-weight:        300;\n                font-size:          12pt;\n                background-color:   rgba(255, 255, 255, 0.975);\n                min-height:         40px;\n                max-height:         75vh;\n                overflow:           auto;\n            }\n            .bottom-styling {\n                font-family:        'Montserrat', sans-serif;\n                font-weight:        300;\n                font-size:          12pt;\n                background-color:   rgba(245, 245, 245, 0.975);\n                min-height:         40px;\n                padding:            10px;\n                padding-left:       30px;\n                padding-right:      30px;\n                text-align:         left;\n            }\n            .min-padding {\n                padding:            10px;\n            }\n            .max-padding {\n                padding:            20px;\n            }\n            .pii-icon {\n                height:             40px;\n            }\n            .logo {\n                display:            inline-block;\n                user-select:        none;\n                align-self:         center;\n                margin:             0 auto;\n            }\n            .title {\n                flex:               1;\n                display:            inline-block;\n                font-family:        'Montserrat', sans-serif;\n                font-size:          15pt;\n                font-weight:        900;\n                color:              white;\n                text-align:         center;\n                align-self:         center;\n                margin:             0 auto;\n            }\n            .modal-content {\n                height:             100%;\n            }\n            .content {\n                width:              100%;\n                height:             100%;\n            }\n            .close-btn {\n                display:            inline-block;\n                align-self:         center;\n                margin:             0 auto;\n                color:              rgb(150, 150, 150);\n                font-size:          24px; \n                font-weight:        bold;\n                user-select:        none;\n            }\n            .close-btn:hover {\n                color:              rgb(255, 255, 255);\n            }\n            table {\n                table-layout:       fixed;\n                color:              black;\n                width:              100%;\n                border:             2px solid rgba(225, 225, 225, 0.35);\n            }\n            table, td, th {\n                border-collapse: collapse;\n            }\n            td, th {\n                text-align:         center;\n            }\n            tr {\n            }\n            th {\n                font-family:        'Montserrat', sans-serif;\n                font-size:          12pt;\n                font-weight:        500;\n                background-color:   rgba(245, 245, 245, 0.75);\n                color:              black;\n                margin-bottom:      5px;\n                padding-left:       7px;\n                padding-right:      7px;\n            }\n            table th {\n                border-bottom:      2.0px solid rgba(0, 0, 0, 0.4); \n                border-left:        1.5px solid rgba(100, 100, 100, 0.5);\n                border-right:       1.5px solid rgba(100, 100, 100, 0.5);\n            }\n            table tr th:first-child {\n                border-left: 0;\n            }\n            table tr th:last-child {\n                border-right: 0;\n            }\n\n            td {\n                font-family:        'Montserrat', sans-serif;\n                font-weight:        250;\n                font-size:          12pt;\n                padding-left:       5px;\n                word-wrap:          anywhere;\n            }\n            table td {\n                border:             1.5px solid rgba(225, 225, 225, 0.6);\n            }\n            table tr:first-child td {\n                border-top:         0;\n            }\n            table tr td:first-child {\n                border-left:        0;\n            }\n            table tr:last-child td {\n                border-bottom:      0;\n            }\n            table tr td:last-child {\n                border-right:       0;\n            }\n        ";
+        style.innerText = "\n            " + font_css_1.get_fonts() + "\n\n            body {\n                padding:            0px;\n                margin:             0px;\n            }\n            .modal {\n                transition:         0.15s ease-in-out;\n                visibility:         hidden;\n                position:           fixed; \n                left:               0; \n                top:                0;\n                transform:          translate(0, -25px);\n                width:              100%;\n                height:             100%;\n                background-color:   rgba(0, 0, 0, 0.5);\n                z-index:            99999;\n            }\n            .modal-wrap {\n                transition:         0.15s ease-in-out;\n                position:           fixed;\n                min-width:          10cm;\n                max-width:          20cm;\n                width:              50%;\n                left:               50%;\n                top:                50%;\n                transform:          translate(-50%, -50%);\n                filter:             drop-shadow(0px 2px 4px #222233);\n            }\n            .top-styling {\n                display:            flex;\n                min-height:         20px;\n                background-color:   rgba(15, 15, 50, 0.75);\n                border:             3px solid rgba(25, 25, 60, 0.75);\n                color:              white;\n                vertical-align:     middle;\n            }\n            .center-styling {\n                font-family:        'Montserrat', sans-serif;\n                font-weight:        300;\n                font-size:          12pt;\n                background-color:   rgba(255, 255, 255, 0.975);\n                min-height:         40px;\n                max-height:         75vh;\n                overflow:           auto;\n            }\n            .bottom-styling {\n                font-family:        'Montserrat', sans-serif;\n                font-weight:        300;\n                font-size:          12pt;\n                background-color:   rgba(245, 245, 245, 0.975);\n                min-height:         40px;\n                padding:            10px;\n                padding-left:       30px;\n                padding-right:      30px;\n                text-align:         center;\n            }\n            .min-padding {\n                padding:            10px;\n            }\n            .max-padding {\n                padding:            20px;\n            }\n            .pii-icon {\n                height:             40px;\n            }\n            .logo {\n                display:            inline-block;\n                user-select:        none;\n                align-self:         center;\n                margin:             0 auto;\n            }\n            .title {\n                flex:               1;\n                display:            inline-block;\n                font-family:        'Montserrat', sans-serif;\n                font-size:          15pt;\n                font-weight:        900;\n                color:              white;\n                text-align:         center;\n                align-self:         center;\n                margin:             0 auto;\n            }\n            .modal-content {\n                height:             100%;\n            }\n            .content {\n                width:              100%;\n                height:             100%;\n            }\n            .close-btn {\n                display:            inline-block;\n                align-self:         center;\n                margin:             0 auto;\n                color:              rgb(150, 150, 150);\n                font-size:          24px; \n                font-weight:        bold;\n                user-select:        none;\n            }\n            .close-btn:hover {\n                color:              rgb(255, 255, 255);\n            }\n            table {\n                table-layout:       fixed;\n                color:              black;\n                width:              100%;\n                border:             2px solid rgba(225, 225, 225, 0.35);\n            }\n            table, td, th {\n                border-collapse: collapse;\n            }\n            td, th {\n                text-align:         left;\n            }\n            tr {\n            }\n            th {\n                font-family:        'Montserrat', sans-serif;\n                font-size:          12pt;\n                font-weight:        500;\n                background-color:   rgba(245, 245, 245, 0.75);\n                color:              black;\n                margin-bottom:      5px;\n                padding-left:       7px;\n                padding-right:      7px;\n            }\n            table th {\n                border-bottom:      2.0px solid rgba(0, 0, 0, 0.4); \n                border-left:        1.5px solid rgba(100, 100, 100, 0.5);\n                border-right:       1.5px solid rgba(100, 100, 100, 0.5);\n            }\n            table tr th:first-child {\n                border-left: 0;\n            }\n            table tr th:last-child {\n                border-right: 0;\n            }\n\n            td {\n                font-family:        'Montserrat', sans-serif;\n                font-weight:        250;\n                font-size:          12pt;\n                padding-left:       5px;\n                word-wrap:          anywhere;\n            }\n            table td {\n                border:             1.5px solid rgba(225, 225, 225, 0.6);\n            }\n            table tr:first-child td {\n                border-top:         0;\n            }\n            table tr td:first-child {\n                border-left:        0;\n            }\n            table tr:last-child td {\n                border-bottom:      0;\n            }\n            table tr td:last-child {\n                border-right:       0;\n            }\n        ";
         _this.shadow.appendChild(style);
         _this.div.classList.add('modal');
         _this.modal_wrap = _this.shadow.ownerDocument.createElement('div');

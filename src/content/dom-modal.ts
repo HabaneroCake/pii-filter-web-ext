@@ -73,7 +73,7 @@ export class DOMModal extends ShadowDomDiv
                 padding:            10px;
                 padding-left:       30px;
                 padding-right:      30px;
-                text-align:         left;
+                text-align:         center;
             }
             .min-padding {
                 padding:            10px;
@@ -130,7 +130,7 @@ export class DOMModal extends ShadowDomDiv
                 border-collapse: collapse;
             }
             td, th {
-                text-align:         center;
+                text-align:         left;
             }
             tr {
             }

@@ -40,8 +40,9 @@ export class PIIFilterService
             if (this.endpoint_map.has(tab.id))
                 throw new Error('Tab already exists.')
 
-            let last_focus:     {frame_id: number, valid: boolean} = {frame_id: null, valid: false};
-            let last_valid_focus: number;
+            let last_focus:             {frame_id: number, valid: boolean} = {frame_id: null, valid: false};
+            let last_valid_focus:       number;
+            let last_pii_str:           string = null;
             let tab_listener =  ((message: ICommonMessage, sender: Runtime.MessageSender): void => 
             {
                 if (sender.tab.id === tab.id)
@@ -63,6 +64,7 @@ export class PIIFilterService
 
                             if (!f_message.valid)
                             {
+                                last_pii_str = null;
                                 browser.tabs.sendMessage(
                                     tab.id,
                                     new ICommonMessage.NotifyPII(
@@ -105,23 +107,37 @@ export class PIIFilterService
                                     [new Array('Informatietype', 'Waarde')]
                                 ];
 
+                                let full_pii_str: string = '';
                                 for (let pii of all_pii)
                                 {
                                     let classifier_name: string = get_dutch_name(pii.classification.classifier.name);
                                     pii_strings.push([[classifier_name, pii.text],
                                             pii.classification.score, pii.classification.severity]);
-                                        if (!pii.classification.score || !pii.classification.severity)
-                                            console.log(pii);
+
+                                    full_pii_str += pii.text;
                                 }
 
-                                browser.tabs.sendMessage(
-                                    tab.id,
-                                    new ICommonMessage.NotifyPII(
-                                        result.severity_mapping,
-                                        pii_strings
-                                    ),
-                                    {frameId: 0}
-                                );
+                                if (last_pii_str != full_pii_str)
+                                {
+                                    browser.tabs.sendMessage(
+                                        tab.id,
+                                        new ICommonMessage.NotifyPII(
+                                            result.severity_mapping,
+                                            pii_strings
+                                        ),
+                                        {frameId: 0}
+                                    );
+
+                                    last_pii_str = full_pii_str;
+                                }
+                                else
+                                {
+                                    browser.tabs.sendMessage(
+                                        tab.id,
+                                        new ICommonMessage.NotifyPIIParsing(),
+                                        {frameId: 0}
+                                    );
+                                }
                             }
                             break;
                         default: {
