@@ -1,7 +1,7 @@
 # ![PII](https://raw.githubusercontent.com/prolody/piif_web_ext/master/assets/logos/a/PIIlogo.png) Filter Web Extension
 
-This project aims to build a personally identifiable information (PII) filter for all (currently only Dutch) users of 
-the internet. This repository contains the web-extension code for the PII Filter.
+This project aims to build a personally identifiable information (PII) filter for users of 
+the internet (currently only Dutch supported). This repository contains the web-extension code for the PII Filter.
 
 See [this repository](https://github.com/prolody/piif) for the datasets and npm module.
 
