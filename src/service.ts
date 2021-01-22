@@ -1,5 +1,5 @@
 import { browser, Tabs, Runtime, WebNavigation } from 'webextension-polyfill-ts';
-import { PIIFilter, NL } from "pii-filter";
+import { PIIFilter, NL } from 'pii-filter';
 import { ICommonMessage } from './common/common-messages';
 
 // TODO: check if window close event automatically calls tabs.onRemoved
