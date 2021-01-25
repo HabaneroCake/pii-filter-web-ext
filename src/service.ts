@@ -5,13 +5,16 @@ import { ICommonMessage } from './common/common-messages';
 // TODO: check if window close event automatically calls tabs.onRemoved
 
 type message_callback = (message: ICommonMessage, sender: Runtime.MessageSender) => void;
-class Tab {constructor(public callback: message_callback){}};
+class Tab {public messaging_timer: number; constructor(public callback: message_callback){}};
 
 export class PIIFilterService
 {
     private pii_filter:     PIIFilter =         new PIIFilter(new NL());
     private active:         boolean =           true; // will be part of settings
     private endpoint_map:   Map<number, Tab> =  new Map<number, Tab>()
+
+    private msg_speed:      number =            500; // ms
+
     constructor()
     {
         function get_dutch_name(classifier_name: string)
@@ -42,7 +45,8 @@ export class PIIFilterService
 
             let last_focus:             {frame_id: number, valid: boolean} = {frame_id: null, valid: false};
             let last_valid_focus:       number;
-            let last_pii_str:           string = null;
+
+            let next_text:              string;
             let tab_listener =  ((message: ICommonMessage, sender: Runtime.MessageSender): void => 
             {
                 if (sender.tab.id === tab.id)
@@ -64,7 +68,6 @@ export class PIIFilterService
 
                             if (!f_message.valid)
                             {
-                                last_pii_str = null;
                                 browser.tabs.sendMessage(
                                     tab.id,
                                     new ICommonMessage.NotifyPII(
@@ -98,61 +101,60 @@ export class PIIFilterService
                             break;
                         }
                         // classify text
-                        case ICommonMessage.Type.TEXT_ENTERED:
+                        case ICommonMessage.Type.TEXT_ENTERED: {
                             if (this.active)
-                            {
-                                let result = this.pii_filter.classify((message as ICommonMessage.TextEntered).text);
-                                let all_pii = result.pii();
-                                let pii_strings: Array<[Array<string>, number?, number?]> = [
-                                    [new Array('Informatietype', 'Waarde')]
-                                ];
-
-                                let full_pii_str: string = '';
-                                for (let pii of all_pii)
-                                {
-                                    let classifier_name: string = get_dutch_name(pii.classification.classifier.name);
-                                    pii_strings.push([[classifier_name, pii.text],
-                                            pii.classification.score, pii.classification.severity]);
-
-                                    full_pii_str += pii.text;
-                                }
-
-                                if (last_pii_str != full_pii_str)
-                                {
-                                    browser.tabs.sendMessage(
-                                        tab.id,
-                                        new ICommonMessage.NotifyPII(
-                                            result.severity_mapping,
-                                            pii_strings
-                                        ),
-                                        {frameId: 0}
-                                    );
-
-                                    last_pii_str = full_pii_str;
-                                }
-                                else
-                                {
-                                    browser.tabs.sendMessage(
-                                        tab.id,
-                                        new ICommonMessage.NotifyPIIParsing(),
-                                        {frameId: 0}
-                                    );
-                                }
-                            }
+                                next_text = (message as ICommonMessage.TextEntered).text;
                             break;
+                        }
                         default: {
                             break;
                         }
                     };
                 };
             });
-            browser.runtime.onMessage.addListener(tab_listener);
             this.endpoint_map.set(tab.id, new Tab(tab_listener));
+            browser.runtime.onMessage.addListener(tab_listener);
+
+            let schedule_message = () => {
+                this.endpoint_map.get(tab.id).messaging_timer = window.setTimeout(() => {
+                    if (next_text != null)
+                    {
+                        let result = this.pii_filter.classify(next_text);
+                        let all_pii = result.pii();
+
+                        let pii_strings: Array<[Array<string>, number?, number?]> = [
+                            [new Array('Informatietype', 'Waarde')]
+                        ];
+
+                        for (let pii of all_pii)
+                        {
+                            let classifier_name: string = get_dutch_name(pii.classification.classifier.name);
+                            pii_strings.push([[classifier_name, pii.text],
+                                    pii.classification.score, pii.classification.severity]);
+                        }
+
+                        browser.tabs.sendMessage(
+                            tab.id,
+                            new ICommonMessage.NotifyPII(
+                                result.severity_mapping,
+                                pii_strings
+                            ),
+                            {frameId: 0}
+                        );
+                        next_text = null;
+                    }
+                    schedule_message();
+                }, this.msg_speed);
+            };
+            schedule_message();
         });
         browser.tabs.onRemoved.addListener((tab_id: number, remove_info: Tabs.OnRemovedRemoveInfoType) => {
             if (this.endpoint_map.has(tab_id))
             {
-                browser.runtime.onMessage.removeListener(this.endpoint_map.get(tab_id).callback);
+                let tab: Tab = this.endpoint_map.get(tab_id);
+                if (tab.messaging_timer)
+                    window.clearTimeout(tab.messaging_timer);
+                browser.runtime.onMessage.removeListener(tab.callback);
                 this.endpoint_map.delete(tab_id);
             }
         });
