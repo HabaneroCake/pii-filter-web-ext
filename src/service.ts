@@ -1,6 +1,7 @@
 import { browser, Tabs, Runtime, WebNavigation } from 'webextension-polyfill-ts';
-import { PIIFilter, NL } from 'pii-filter';
 import { ICommonMessage } from './common/common-messages';
+
+import * as pf from 'pii-filter';
 
 // TODO: check if window close event automatically calls tabs.onRemoved
 
@@ -9,7 +10,7 @@ class Tab {public messaging_timer: number; constructor(public callback: message_
 
 export class PIIFilterService
 {
-    private pii_filter:     PIIFilter =         new PIIFilter(new NL());
+    private pii_filter:     pf.PIIClassifier =  pf.make_pii_classifier(pf.languages.nl.make_lm());
     private active:         boolean =           true; // will be part of settings
     private endpoint_map:   Map<number, Tab> =  new Map<number, Tab>()
 
@@ -120,7 +121,7 @@ export class PIIFilterService
                     if (next_text != null)
                     {
                         let result = this.pii_filter.classify(next_text);
-                        let all_pii = result.pii();
+                        let all_pii = result.pii;
 
                         let pii_strings: Array<[Array<string>, number?, number?]> = [
                             [new Array('Informatietype', 'Waarde')]
@@ -128,15 +129,14 @@ export class PIIFilterService
 
                         for (let pii of all_pii)
                         {
-                            let classifier_name: string = get_dutch_name(pii.classification.classifier.name);
-                            pii_strings.push([[classifier_name, pii.text],
-                                    pii.classification.score, pii.classification.severity]);
+                            let classifier_name: string = get_dutch_name(pii.type);
+                            pii_strings.push([[classifier_name, pii.value], pii.confidence, pii.severity]);
                         }
 
                         browser.tabs.sendMessage(
                             tab.id,
                             new ICommonMessage.NotifyPII(
-                                result.severity_mapping,
+                                result.severity,
                                 pii_strings
                             ),
                             {frameId: 0}
