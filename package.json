@@ -5,6 +5,7 @@
     "files": [
         "build/"
     ],
+    "repository": "https://github.com/prolody/pii-filter-web-ext",
     "license": "MIT",
     "keywords": [],
     "scripts": {
@@ -19,6 +20,7 @@
     },
     "devDependencies": {
         "@types/node": "^14.11.2",
+        "@types/resize-observer-browser": "^0.1.5",
         "browserify": "^17.0.0",
         "gts": "^3.0.3",
         "pii-filter": "^1.0.17",
