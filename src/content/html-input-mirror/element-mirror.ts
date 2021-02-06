@@ -2,7 +2,7 @@
 import { Observable } from '../../common/observable';
 import { ShadowDomDiv } from '../shadow-dom-div';
 import { ClippedRect } from '../../common/clipped-rect';
-
+import { Rect } from '../../common/rect';
 /**
  * Forms a base from which to build an HTML input/textarea mirror element
  */
@@ -31,8 +31,7 @@ export abstract class ElementMirror extends ShadowDomDiv
      * @protected
      * Stores clean-up actions
      */
-    protected unbinders:    Array<()=>void> = new Array<()=>void>();
-
+    protected unbinders:            Array<()=>void> =               new Array<()=>void>();
     /**
      * create a new abstract element mirror
      * @param document the document element to create the shadow dom on
@@ -77,20 +76,40 @@ export abstract class ElementMirror extends ShadowDomDiv
             sync_scroll();
         }
 
-        let last_rect: [number, number, number, number] =   [0, 0, 0, 0];
+        let last_rect: Rect = new Rect();
         const update_rect = (
             left: number,
             top: number,
             width: number,
-            height: number
+            height: number,
+            scroll_width: number =  this.input_element.scrollWidth,
+            scroll_height: number = this.input_element.scrollHeight,
+            scroll_x: number =      window.scrollX,
+            scroll_y: number =      window.scrollY
         ) => {
-            if (left != last_rect[0] ||
-                top != last_rect[1] ||
-                width != last_rect[2] ||
-                height != last_rect[3])
+            if (left != last_rect.left ||
+                top != last_rect.top ||
+                width != last_rect.width ||
+                height != last_rect.height ||
+                scroll_width != last_rect.scroll_width || 
+                scroll_height != last_rect.scroll_height ||
+                scroll_x != last_rect.absolute_offs_x ||
+                scroll_y != last_rect.absolute_offs_y
+            )
             {
-                this.mirror_rect(left, top, width, height);
-                last_rect = [left, top, width, height]
+                const new_rect = new Rect(
+                    left,
+                    top,
+                    width,
+                    height,
+                    scroll_width,
+                    scroll_height,
+                    scroll_x,
+                    scroll_y
+                )
+                this.mirror_rect(new_rect);
+                
+                last_rect = new_rect;
                 this._layout.notify();
             }
         }
@@ -98,8 +117,8 @@ export abstract class ElementMirror extends ShadowDomDiv
         const update_rect_from_bounding_client = () => {
             const bounding_rect:    DOMRect =   this.input_element.getBoundingClientRect();
             update_rect(
-                bounding_rect.left + window.scrollX,
-                bounding_rect.top + window.scrollY,
+                bounding_rect.left,
+                bounding_rect.top,
                 bounding_rect.width,
                 bounding_rect.height
             );
@@ -125,8 +144,8 @@ export abstract class ElementMirror extends ShadowDomDiv
              observer: IntersectionObserver) => {
             const bounding_rect:    DOMRect =   entries[0].boundingClientRect;
             update_rect(
-                bounding_rect.left + window.scrollX,
-                bounding_rect.top + window.scrollY,
+                bounding_rect.left,
+                bounding_rect.top,
                 bounding_rect.width,
                 bounding_rect.height
             );
@@ -155,10 +174,38 @@ export abstract class ElementMirror extends ShadowDomDiv
         resize_observer.observe(this.input_element);
         this.unbinders.push(() => { resize_observer.disconnect(); });
         
-        // watch for style change
+        // TODO: check if this is only a resize event
+
+        // watch for style change / resize
+        let old_css: Map<string, string> = new Map<string, string>();
+        for (let key of this.input_element.style)
+        {
+            old_css.set(
+                key,
+                this.input_element.style.getPropertyValue(key)
+            );
+        }
+        const resize_attrs: Array<string> = ['width', 'height', 'inline-size', 'block-size'];
         const style_observer = new MutationObserver((mutations: MutationRecord[], observer: MutationObserver) =>
-        {   // todo: can we update only the mutated attr?
-            update_css_from_computed_style();
+        {
+            let is_resize: boolean = true;
+            for (let key of this.input_element.style)
+            {
+                const new_property_val: string = this.input_element.style.getPropertyValue(key);
+                if (new_property_val != old_css.get(key))
+                {
+                    if (resize_attrs.indexOf(key) == -1)
+                        is_resize = false;
+                        
+                    old_css.set(key, new_property_val);
+                }
+
+            }
+            if (!is_resize)
+            {
+                update_css_from_computed_style();
+                update_rect_from_bounding_client();
+            }
         });
         style_observer.observe(this.input_element, { attributes: true, attributeFilter: ['style', 'class'] });
         this.unbinders.push(() => { style_observer.disconnect(); });
@@ -187,6 +234,11 @@ export abstract class ElementMirror extends ShadowDomDiv
     }
     /**
      * @protected
+     * the rect which will be used for clipping
+     */
+    protected abstract get_viewport(): Rect;
+    /**
+     * @protected
      * the mirror div which will be used for range lookups
      */
     protected abstract get_mirror_div():  HTMLDivElement;
@@ -203,17 +255,9 @@ export abstract class ElementMirror extends ShadowDomDiv
     protected abstract mirror_scroll(scrollLeft: number, scrollTop: number): void;
     /**
      * called when the mirror needs to move / resize its rect to match the input element
-     * @param left x absolute
-     * @param top y absolute
-     * @param width w
-     * @param height h
+     * @param rect the rect
      */
-    protected abstract mirror_rect(
-        left: number,
-        top: number,
-        width: number,
-        height: number
-    ): void;
+    protected abstract mirror_rect(rect: Rect): void;
     /**
      * called when the mirror needs to match the input css
      * @param computed_style the computed style
@@ -243,35 +287,35 @@ export abstract class ElementMirror extends ShadowDomDiv
         for (let rect of relative_rects)
         {
             // only return rects in visible range
-            const bounding_rect: DOMRect = this.get_mirror_div().getBoundingClientRect();
+            const viewport: Rect = this.get_viewport();
             
             // check if there is a partial overlap
-            if (!(rect.bottom < bounding_rect.top ||
-                rect.top > bounding_rect.bottom ||
-                rect.left > bounding_rect.right ||
-                rect.right < bounding_rect.left))
+            if (!(rect.bottom < viewport.top ||
+                rect.top >  viewport.bottom ||
+                rect.left > viewport.right ||
+                rect.right < viewport.left))
             {
                 // clip rect
-                const left_max:         number =    Math.max(rect.left, bounding_rect.left + 1);
-                const right_min:        number =    Math.min(rect.right, bounding_rect.right - 1);
-                const top_max:          number =    Math.max(rect.top, bounding_rect.top + 1);
-                const bottom_min:       number =    Math.min(rect.bottom, bounding_rect.bottom - 1);
-                const left_clipping:    number =    (left_max - rect.left);
-                const right_clipping:   number =    (rect.right - right_min);
-                const top_clipping:     number =    (top_max - rect.top);
-                const bottom_clipping:  number =    (rect.bottom - bottom_min);
-                const width:            number =    rect.width - left_clipping - right_clipping;
-                const height:           number =    rect.height - top_clipping - bottom_clipping;
+                const left_max:         number =    Math.max(rect.left,     viewport.left);
+                const right_min:        number =    Math.min(rect.right,    viewport.right);
+                const top_max:          number =    Math.max(rect.top,      viewport.top);
+                const bottom_min:       number =    Math.min(rect.bottom,   viewport.bottom);
+                // calculate clipping
+                const left_clipping:    number =    (left_max -     rect.left);
+                const right_clipping:   number =    (rect.right -   right_min);
+                const top_clipping:     number =    (top_max -      rect.top);
+                const bottom_clipping:  number =    (rect.bottom -  bottom_min);
+                // adjust width and height
+                const width:            number =    rect.width -    left_clipping - right_clipping;
+                const height:           number =    rect.height -   top_clipping - bottom_clipping;
 
                 absolute_rects.push(new ClippedRect(
-                    left_max +      window.scrollX,
-                    (left_clipping > 0),
-                    right_min +     window.scrollX,
-                    (right_clipping > 0),
-                    top_max +       window.scrollY,
-                    (top_clipping >  0),
-                    bottom_min +    window.scrollY,
-                    (bottom_clipping > 0),
+                    left_max +          window.scrollX,
+                    (left_clipping >    0),
+                    (right_clipping >   0),
+                    top_max +           window.scrollY,
+                    (top_clipping >     0),
+                    (bottom_clipping >  0),
                     width,
                     height
                 ));

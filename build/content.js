@@ -1364,17 +1364,20 @@ exports.Observable = Observable;
              * setter for value (notifies observers)
              */
             set: function (new_value) {
-                var _this = this;
                 if (!this.notify_on_diff_only || this.value !== new_value) {
                     this._value = new_value;
-                    this._observers.forEach(function (callback) {
-                        callback(_this.value);
-                    });
+                    this.notify();
                 }
             },
             enumerable: false,
             configurable: true
         });
+        Variable.prototype.notify = function () {
+            var _this = this;
+            this._observers.forEach(function (callback) {
+                callback(_this.value);
+            });
+        };
         Variable.prototype.get = function () {
             return this.value;
         };
@@ -1383,7 +1386,7 @@ exports.Observable = Observable;
          * @param callback the callback which will be called with the new value
          */
         Variable.prototype.observe = function (callback) {
-            if (this._observers.includes(callback))
+            if (this._observers.indexOf(callback) > -1)
                 throw new Error("Observer already exists on Variable.");
             this._observers.push(callback);
         };
