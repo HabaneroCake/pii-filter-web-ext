@@ -1,7 +1,7 @@
 /// <reference types="resize-observer-browser" />
-import { Observable } from '../common/observable';
-import { ShadowDomDiv } from './shadow-dom-div';
-import { ClippedRect } from '../common/clipped-rect';
+import { Observable } from '../../../common/observable';
+import { ShadowDomDiv } from '../../shadow-dom-div';
+import { ClippedRect } from '../../../common/clipped-rect';
 
 // todo: split this up into input / textarea implementations and separate ff impl
 // todo: deal with cols / rows

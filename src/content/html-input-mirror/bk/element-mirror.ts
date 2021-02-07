@@ -278,9 +278,10 @@ export abstract class ElementMirror extends ShadowDomDiv
         char_start_index =  Math.min(char_start_index, text_len - 1);
         char_end_index =    Math.min(char_end_index, text_len);
         
-        let range: Range = document.createRange();
-        range.setStart(this.get_mirror_div().childNodes[0], char_start_index);
-        range.setEnd(this.get_mirror_div().childNodes[0], char_end_index);
+        const main_node: Node = this.get_mirror_div().childNodes[0];
+        let range: Range = this.document.createRange();
+        range.setStart(main_node, char_start_index);
+        range.setEnd(main_node, char_end_index);
         let relative_rects: DOMRectList = range.getClientRects();
         let absolute_rects: Array<ClippedRect> = new Array<ClippedRect>();
         

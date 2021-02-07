@@ -1,6 +1,49 @@
 import { ElementMirror } from './element-mirror';
 import { Rect } from '../../common/rect';
 
+// from https://github.com/component/textarea-caret-position/blob/master/index.js
+const properties: Array<string> = [
+    'direction',  // RTL support
+    'boxSizing',
+    'width',  // on Chrome and IE, exclude the scrollbar, so the mirror div wraps exactly as the textarea does
+    'height',
+    'overflowX',
+    'overflowY',  // copy the scrollbar for IE
+    'overflowWrap',
+  
+    'borderTopWidth',
+    'borderRightWidth',
+    'borderBottomWidth',
+    'borderLeftWidth',
+    'borderStyle',
+  
+    'paddingTop',
+    'paddingRight',
+    'paddingBottom',
+    'paddingLeft',
+  
+    // https://developer.mozilla.org/en-US/docs/Web/CSS/font
+    'fontStyle',
+    'fontVariant',
+    'fontWeight',
+    'fontStretch',
+    'fontSize',
+    'fontSizeAdjust',
+    'lineHeight',
+    'fontFamily',
+  
+    'textAlign',
+    'textTransform',
+    'textIndent',
+    'textDecoration',  // might not make a difference, but better be safe
+  
+    'letterSpacing',
+    'wordSpacing',
+  
+    'tabSize',
+    'MozTabSize'
+];
+
 /**
  * abstract mirror that covers things which are the same across browsers
  */
@@ -33,13 +76,8 @@ export abstract class AbstractHTMLTextAreaMirror extends ElementMirror
     protected abstract mirror_rect(rect: Rect): void;
     protected mirror_style(computed_style: CSSStyleDeclaration)
     {
-        Array.from(computed_style).forEach(
-            key => this.get_mirror_div().style.setProperty(
-                        key,
-                        computed_style.getPropertyValue(key),
-                        computed_style.getPropertyPriority(key)
-            )
-        );
+        for (let prop of properties)
+           Reflect.set(this.get_mirror_div().style, prop, Reflect.get(computed_style, prop));
 
         // this.get_mirror_div().style.cssText +=              'appearance: textarea;';
         
@@ -70,6 +108,7 @@ export abstract class AbstractHTMLTextAreaMirror extends ElementMirror
         this.div.style.pointerEvents =                      'none';
         this.div.style.display =                            'block';
         this.div.style.position =                           'absolute';
+        //textRendering = 'geometricPrecision'; ?
     }
 };
 

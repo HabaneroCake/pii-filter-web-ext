@@ -1,5 +1,6 @@
 import { AbstractHTMLTextAreaMirror } from './abstract-textarea-mirror';
 import { Rect } from '../../common/rect';
+import { TextAreaLineProbe } from './textarea-line-probe';
 
 /**
  * HTML textarea mirror which supports chrome, but doesn't respect Firefox's viewport padding
@@ -8,6 +9,7 @@ export class ChromeTextAreaMirror extends AbstractHTMLTextAreaMirror
 {
     protected rect:         Rect =              new Rect();
     protected viewport:     Rect =              new Rect();
+    protected line_probe:   TextAreaLineProbe;
 
     constructor(
         document: Document,
@@ -19,6 +21,7 @@ export class ChromeTextAreaMirror extends AbstractHTMLTextAreaMirror
             input_element,
             rect_polling_interval
         );
+        this.line_probe = new TextAreaLineProbe(input_element, document);
         this.init();
     }
     protected get_viewport(): Rect
@@ -28,6 +31,12 @@ export class ChromeTextAreaMirror extends AbstractHTMLTextAreaMirror
     protected get_mirror_div():  HTMLDivElement
     {
         return this.div;
+    }
+    protected mirror_content(value: string)
+    {
+        super.mirror_content(value);
+        // if this could be incremental and separate out the part which was edited and only reprocess that, it would be great
+        console.log(this.line_probe.probe());
     }
     protected mirror_scroll(scrollLeft: number, scrollTop: number)
     {
@@ -41,11 +50,11 @@ export class ChromeTextAreaMirror extends AbstractHTMLTextAreaMirror
     protected mirror_rect(rect: Rect)
     {
         this.rect =                 rect;
-
-        this.div.style.width =      `${ rect.width }px`;
-        this.div.style.inlineSize = `${ rect.width }px`;
-        this.div.style.height =     `${ rect.height }px`;
-        this.div.style.blockSize =  `${ rect.height }px`;
+        this.line_probe.set_width(this.input_element.clientWidth);
+        // this.div.style.width =      `${ rect.width }px`;
+        // this.div.style.inlineSize = `${ rect.width }px`;
+        // this.div.style.height =     `${ rect.height }px`;
+        // this.div.style.blockSize =  `${ rect.height }px`;
 
         // adjust viewport
         this.viewport =             Rect.from_rect(rect);
@@ -59,7 +68,13 @@ export class ChromeTextAreaMirror extends AbstractHTMLTextAreaMirror
     protected mirror_style(computed_style: CSSStyleDeclaration)
     {
         super.mirror_style(computed_style);
-        this.div.style.boxSizing = 'border-box';
+        this.line_probe.set_css(computed_style);
+        // this.div.style.whiteSpace = 'pre-wrap';
+        this.div.style.cssText +=   'appearance: textarea;';
+        this.div.style.display =    'inline-block';
+        this.div.style.boxSizing =  'content-box';
+        this.div.style.overflow =   'hidden';
+        this.div.style.visibility = 'hidden';
     }
 };
 
