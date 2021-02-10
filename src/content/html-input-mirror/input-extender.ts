@@ -79,29 +79,32 @@ export class TextAreaInputInterface extends AbstractInputInterface
 
         const text_area_element: HTMLTextAreaElement = (this.settings.element as HTMLTextAreaElement);
 
+        const set_overlay_text = (text: string) => {
+            this.input_overlay.textContent = text + '\n'; // which is removed again below
+        };
+
         // watch outside changes
         const element_input_callback = (event: Event) => {
             const new_text: string = text_area_element.value;
             if (new_text != this.overlay_str)
             {
-                this.input_overlay.textContent = new_text;
+                set_overlay_text(new_text);
                 if (this.settings.on_input_changed != null)
                     this.settings.on_input_changed(new_text);
             }
         };
         
-        // bind check if form or javascript changes textarea contents
+        // bind check if form or event changes textarea contents
         for (let event_name of ['input', 'change'])
             this.bindings.bind_event(this.settings.element, event_name, element_input_callback);
 
-        // mutation observer as well?
         const sync_contents = () =>
         {
             this.overlay_str = this.input_overlay.innerHTML.replace(/(\<\/div\>)|(^\<div\>)/g, '')
                                 .replace(/(\<div\>\<\/?br\>)|(\<div\>|<\/?br\>)/g, '\n')
                                 .replace(/&amp;/g, '&')
                                 .replace(/&gt;/g, '>')
-                                .replace(/&lt;/g, '<');
+                                .replace(/&lt;/g, '<').replace(/\n$/, '');
             text_area_element.value = this.overlay_str;
 
         };
@@ -188,7 +191,7 @@ export class TextAreaInputInterface extends AbstractInputInterface
         this.bindings.add_unbinding(() => { resize_observer.disconnect(); });
 
         // sync initial contents
-        this.input_overlay.textContent = text_area_element.value;
+        set_overlay_text(text_area_element.value);
         this.input_overlay.contentEditable = 'true';
         this.input_overlay.focus();
         // sync caret
@@ -356,7 +359,6 @@ export class PIIFilterInputExtender
 };
 
 // TODO:
-// show last line if only newline / whitespace
 // sync range highlighting
 // input 1 line same functionality
 
