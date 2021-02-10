@@ -287,8 +287,8 @@ export class TextAreaInputInterface extends AbstractInputInterface
 
 export class PIIFilterInputExtender
 {
-    protected bindings: Bindings = new Bindings();
-    protected input_interface: AbstractInputInterface;
+    protected bindings:         Bindings =                  new Bindings();
+    protected input_interface:  AbstractInputInterface;
 
     constructor(main_document: Document)
     {
