@@ -2561,12 +2561,13 @@ class ElementObserver {
         const style_observer = new MutationObserver((mutations, observer) => {
             let new_values = new Map();
             for (let [key, value] of this.style_calculator.filter_defaults()) {
-                if (resize_attrs.indexOf(key) == -1) {
-                    if (!old_css.has(key) || value != old_css.get(key)) {
-                        new_values.set(key, value);
-                        old_css.set(key, value);
-                    }
+                // if (resize_attrs.indexOf(key) == -1)
+                // {
+                if (!old_css.has(key) || value != old_css.get(key)) {
+                    new_values.set(key, value);
+                    old_css.set(key, value);
                 }
+                // }
             }
             if (new_values.keys.length > 0) {
                 on_style_changed(new_values, old_css);
@@ -2638,31 +2639,22 @@ function copy_event(event, new_target) {
     return new Event(event.type, event_dict);
 }
 exports.copy_event = copy_event;
+/**
+ * this class exists as an overlay hack since mirroring a textarea doesn't *always* give the right result
+ */
 class TextAreaInputInterface extends AbstractInputInterface {
     constructor(settings) {
         super(settings);
         this.overlay_str = '';
+        this.ignore_resize_callbacks = false;
         this.input_overlay = settings.document.createElement('div');
         this.div.appendChild(this.input_overlay);
-        // const style: HTMLStyleElement = settings.document.createElement('style');
-        // style.innerText = `
-        //     .input_overlay {
-        //         overflow-y: scroll;
-        //         scrollbar-width: none;
-        //         -ms-overflow-style: none;
-        //     }
-        //     .input_overlay::-webkit-scrollbar { 
-        //         display: none;  /* Safari and Chrome */
-        //     }
-        // `;
-        // this.div.appendChild(style);
-        // TODO: sync selection start and end
         const text_area_element = this.settings.element;
         // watch outside changes
         const element_input_callback = (event) => {
             const new_text = text_area_element.value;
             if (new_text != this.overlay_str) {
-                this.input_overlay.textContent = new_text + '\0';
+                this.input_overlay.textContent = new_text;
                 if (this.settings.on_input_changed != null)
                     this.settings.on_input_changed(new_text);
             }
@@ -2670,11 +2662,9 @@ class TextAreaInputInterface extends AbstractInputInterface {
         // bind check if form or javascript changes textarea contents
         for (let event_name of ['input', 'change'])
             this.bindings.bind_event(this.settings.element, event_name, element_input_callback);
-        // TODO: need to watch input of input as well? for form directed changes -> sync if not the same?
-        // so forward some events from the input to the div as well, while making sure not to set value if it is the same
         // mutation observer as well?
         const sync_contents = () => {
-            this.overlay_str = this.input_overlay.innerHTML.replace(/(\<\/div\>)|(^\<div\>)|(\\0)/g, '')
+            this.overlay_str = this.input_overlay.innerHTML.replace(/(\<\/div\>)|(^\<div\>)/g, '')
                 .replace(/(\<div\>\<\/?br\>)|(\<div\>|<\/?br\>)/g, '\n')
                 .replace(/&amp;/g, '&')
                 .replace(/&gt;/g, '>')
@@ -2694,11 +2684,6 @@ class TextAreaInputInterface extends AbstractInputInterface {
                     this.settings.on_input_changed(this.overlay_str);
             });
         }
-        // // keyup
-        // this.bindings.bind_event(this.input_overlay, 'keydown', (event: Event) => {
-        //     if ((event as KeyboardEvent).code == 'Tab')
-        //         event.preventDefault();
-        // });
         // events which should sync the contents before forwarding the event
         for (let event_name of [
             'focus', 'submit', 'cut', 'copy', 'paste', 'keydown', 'keyup', 'contextmenu', 'select', 'selectstart',
@@ -2719,7 +2704,6 @@ class TextAreaInputInterface extends AbstractInputInterface {
                 this.settings.element.dispatchEvent(copied_event);
             });
         }
-        // TODO: selection and unselect?
         this.bindings.bind_event(this.input_overlay, 'scroll', (event) => {
             this.settings.element.scrollTop = this.input_overlay.scrollTop;
             this.settings.element.scrollLeft = this.input_overlay.scrollLeft;
@@ -2732,13 +2716,11 @@ class TextAreaInputInterface extends AbstractInputInterface {
             const copied_event = copy_event(event, this.settings.element);
             this.settings.element.dispatchEvent(copied_event);
         });
-        this.overlay_observer = new element_observer_1.ElementObserver(document, this.input_overlay, this.settings.polling_interval, (rect) => {
-            // rect.apply_to_style(this.settings.element.style, false, false);
-        }, (changes) => { });
         // keep at end
         super.init();
+        // TODO: resize observer here (needs to account for padding etc.) for forwarding resize to input
         // sync initial contents
-        this.input_overlay.textContent = text_area_element.value + '\0';
+        this.input_overlay.textContent = text_area_element.value;
         this.input_overlay.contentEditable = 'true';
         this.input_overlay.focus();
         // sync caret
@@ -2759,7 +2741,6 @@ class TextAreaInputInterface extends AbstractInputInterface {
     }
     ;
     delete() {
-        this.overlay_observer.delete();
         super.delete();
         // show input element
         this.settings.element.style.visibility = 'visible';
@@ -2767,8 +2748,9 @@ class TextAreaInputInterface extends AbstractInputInterface {
     }
     on_rect_changed(rect) {
         rect.apply_position_to_element(this.div, true);
-        rect.apply_width_and_height_to_element(this.input_overlay);
-        // TODO resizing
+        // rect.apply_width_and_height_to_element(this.input_overlay);
+        this.input_overlay.style.width = `${this.settings.element.clientWidth}px`;
+        this.input_overlay.style.height = `${this.settings.element.clientHeight}px`;
     }
     on_style_changed(changes, all) {
         for (let [key, value] of changes) {
@@ -2798,7 +2780,7 @@ class TextAreaInputInterface extends AbstractInputInterface {
         }
         // overrides
         this.input_overlay.style.position = 'relative';
-        this.input_overlay.style.boxSizing = 'border-box';
+        this.input_overlay.style.boxSizing = 'content-box';
         this.input_overlay.style.display = 'block';
         this.input_overlay.style.margin = '0px';
         this.input_overlay.style.zIndex = '99999';
@@ -2878,13 +2860,16 @@ class PIIFilterInputExtender {
 }
 exports.PIIFilterInputExtender = PIIFilterInputExtender;
 ;
-// TODO: - resize forwarding 
-// hide / show other element on create / destroy
+// TODO:
+// have resize observer on overlay for size forwarding
 // resizing could affect other element only after release?
-// todo: also have scroll work other way around
-// todo: only have resize observer on overlay for size forwarding?
-// TODO: watch for uncaught css changes
-// TODO: eventually redo firefox support so that ctr/cmd keycomb work.
+// show last line if only newline / whitespace
+// sync range highlighting
+// TODO: eventually:
+// resize forwarding 
+// poll for uncaught css changes
+// redo firefox support so that ctr/cmd keycomb work. or try different approach
+// have scroll work other way around if not triggered by own el.
 
 },{"../bindings":8,"../shadow-dom":15,"./element_observer":13}],15:[function(require,module,exports){
 "use strict";

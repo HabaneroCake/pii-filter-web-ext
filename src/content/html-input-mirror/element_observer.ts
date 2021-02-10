@@ -5,8 +5,8 @@ import { ShadowDom } from '../shadow-dom';
 class StyleCalculator
 {
     protected shadow_dom:       ShadowDom;
-    protected default_style:    CSSStyleDeclaration;
-    protected comp_style:       CSSStyleDeclaration;
+    public default_style:       CSSStyleDeclaration;
+    public comp_style:          CSSStyleDeclaration;
     constructor(
         document: Document,
         element: HTMLElement
@@ -46,16 +46,54 @@ export class ElementObserver
 {
     protected bindings:         Bindings = new Bindings();
     protected active:           boolean = true;
-    protected style_calculator: StyleCalculator;
+    public style_calculator:    StyleCalculator;
 
     constructor(
         document: Document,
         input_element: HTMLElement,
         polling_interval: number, // for uncaught changes
-        on_rect_changed: (rect: Rect) => void,
+        on_rect_changed: (rect: Rect, style: CSSStyleDeclaration) => void,
         on_style_changed: (changed: Map<string, string>, all: Map<string, string>) => void,
     )
     {
+        this.style_calculator = new StyleCalculator(document, input_element);
+        // watch for style change
+        const resize_attrs: Array<string> = ['width', 'height', 'inline-size', 'block-size'];
+        let old_css: Map<string, string> = new Map<string, string>();
+        for (let [key, value] of this.style_calculator.filter_defaults())
+        {
+            if (resize_attrs.indexOf(key) == -1)
+            {
+                old_css.set(
+                    key,
+                    value
+                );
+            }
+        }
+        const style_observer = new MutationObserver((mutations: MutationRecord[], observer: MutationObserver) =>
+        {
+            let new_values: Map<string, string> = new Map<string, string>();
+            for (let [key, value] of this.style_calculator.filter_defaults())
+            {
+                // if (resize_attrs.indexOf(key) == -1)
+                // {
+                    if (!old_css.has(key) || value != old_css.get(key))
+                    {
+                        new_values.set(key, value);
+                        old_css.set(key, value);
+                    }
+                // }
+
+            }
+            if (new_values.keys.length > 0)
+            {
+                on_style_changed(new_values, old_css);
+                update_rect_from_bounding_client();
+            }
+        });
+        style_observer.observe(input_element, { attributes: true, attributeFilter: ['style', 'class'] });
+        this.bindings.add_unbinding(() => { style_observer.disconnect(); });
+
         let last_rect: Rect = new Rect();
         const update_rect = (
             left: number,
@@ -87,7 +125,7 @@ export class ElementObserver
                     scroll_x,
                     scroll_y
                 )
-                on_rect_changed(new_rect);
+                on_rect_changed(new_rect, this.style_calculator.comp_style);
                 last_rect = new_rect;
             }
         }
@@ -137,44 +175,6 @@ export class ElementObserver
         });
         resize_observer.observe(input_element);
         this.bindings.add_unbinding(() => { resize_observer.disconnect(); });
-
-        this.style_calculator = new StyleCalculator(document, input_element);
-        // watch for style change
-        const resize_attrs: Array<string> = ['width', 'height', 'inline-size', 'block-size'];
-        let old_css: Map<string, string> = new Map<string, string>();
-        for (let [key, value] of this.style_calculator.filter_defaults())
-        {
-            if (resize_attrs.indexOf(key) == -1)
-            {
-                old_css.set(
-                    key,
-                    value
-                );
-            }
-        }
-        const style_observer = new MutationObserver((mutations: MutationRecord[], observer: MutationObserver) =>
-        {
-            let new_values: Map<string, string> = new Map<string, string>();
-            for (let [key, value] of this.style_calculator.filter_defaults())
-            {
-                if (resize_attrs.indexOf(key) == -1)
-                {
-                    if (!old_css.has(key) || value != old_css.get(key))
-                    {
-                        new_values.set(key, value);
-                        old_css.set(key, value);
-                    }
-                }
-
-            }
-            if (new_values.keys.length > 0)
-            {
-                on_style_changed(new_values, old_css);
-                update_rect_from_bounding_client();
-            }
-        });
-        style_observer.observe(input_element, { attributes: true, attributeFilter: ['style', 'class'] });
-        this.bindings.add_unbinding(() => { style_observer.disconnect(); });
 
         // watch for window resize
         const win_resize_observer: ResizeObserver = new ResizeObserver((
