@@ -1253,7 +1253,7 @@ exports.ICommonMessage = void 0;
 ;
 var ICommonMessage;
 (function (ICommonMessage) {
-    var Type;
+    let Type;
     (function (Type) {
         Type[Type["FOCUS"] = 0] = "FOCUS";
         Type[Type["REFOCUS"] = 1] = "REFOCUS";
@@ -1262,48 +1262,43 @@ var ICommonMessage;
         Type[Type["NOTIFY_PII_PARSING"] = 4] = "NOTIFY_PII_PARSING";
     })(Type = ICommonMessage.Type || (ICommonMessage.Type = {}));
     ;
-    var Focus = /** @class */ (function () {
-        function Focus(valid) {
+    class Focus {
+        constructor(valid) {
             this.valid = valid;
             this.type = ICommonMessage.Type.FOCUS;
         }
-        return Focus;
-    }());
+    }
     ICommonMessage.Focus = Focus;
     ;
-    var Refocus = /** @class */ (function () {
-        function Refocus() {
+    class Refocus {
+        constructor() {
             this.type = ICommonMessage.Type.REFOCUS;
         }
-        return Refocus;
-    }());
+    }
     ICommonMessage.Refocus = Refocus;
     ;
-    var TextEntered = /** @class */ (function () {
-        function TextEntered(text) {
+    class TextEntered {
+        constructor(text) {
             this.text = text;
             this.type = ICommonMessage.Type.TEXT_ENTERED;
         }
-        return TextEntered;
-    }());
+    }
     ICommonMessage.TextEntered = TextEntered;
     ;
-    var NotifyPIIParsing = /** @class */ (function () {
-        function NotifyPIIParsing() {
+    class NotifyPIIParsing {
+        constructor() {
             this.type = ICommonMessage.Type.NOTIFY_PII_PARSING;
         }
-        return NotifyPIIParsing;
-    }());
+    }
     ICommonMessage.NotifyPIIParsing = NotifyPIIParsing;
     ;
-    var NotifyPII = /** @class */ (function () {
-        function NotifyPII(severity_mapping, pii) {
+    class NotifyPII {
+        constructor(severity_mapping, pii) {
             this.severity_mapping = severity_mapping;
             this.pii = pii;
             this.type = ICommonMessage.Type.NOTIFY_PII;
         }
-        return NotifyPII;
-    }());
+    }
     ICommonMessage.NotifyPII = NotifyPII;
     ;
 })(ICommonMessage = exports.ICommonMessage || (exports.ICommonMessage = {}));
@@ -1316,20 +1311,15 @@ exports.Margin = void 0;
 /**
  * simple margin type
  */
-var Margin = /** @class */ (function () {
-    function Margin(left, top, right, bottom) {
-        if (left === void 0) { left = 0; }
-        if (top === void 0) { top = 0; }
-        if (right === void 0) { right = 0; }
-        if (bottom === void 0) { bottom = 0; }
+class Margin {
+    constructor(left = 0, top = 0, right = 0, bottom = 0) {
         this.left = left;
         this.top = top;
         this.right = right;
         this.bottom = bottom;
     }
     ;
-    return Margin;
-}());
+}
 exports.Margin = Margin;
 
 },{}],5:[function(require,module,exports){
@@ -1339,75 +1329,66 @@ exports.Observable = void 0;
 /**
  * Thin wrapper to separate private and public interfaces of Observable
  */
-var Observable = /** @class */ (function () {
-    function Observable(variable) {
+class Observable {
+    constructor(variable) {
         this.observe = variable.observe.bind(variable);
         this.disregard = variable.disregard.bind(variable);
         this.get = variable.get.bind(variable);
     }
-    return Observable;
-}());
+}
 exports.Observable = Observable;
 (function (Observable) {
-    var Variable = /** @class */ (function () {
-        function Variable(notify_on_diff_only) {
-            if (notify_on_diff_only === void 0) { notify_on_diff_only = true; }
+    class Variable {
+        constructor(notify_on_diff_only = true) {
             this.notify_on_diff_only = notify_on_diff_only;
             this._observers = new Array();
             this._value = null;
         }
-        Object.defineProperty(Variable.prototype, "value", {
-            get: function () {
-                return this._value;
-            },
-            /**
-             * setter for value (notifies observers)
-             */
-            set: function (new_value) {
-                if (!this.notify_on_diff_only || this.value !== new_value) {
-                    this._value = new_value;
-                    this.notify();
-                }
-            },
-            enumerable: false,
-            configurable: true
-        });
-        Variable.prototype.notify = function () {
-            var _this = this;
-            this._observers.forEach(function (callback) {
-                callback(_this.value);
+        get value() {
+            return this._value;
+        }
+        /**
+         * setter for value (notifies observers)
+         */
+        set value(new_value) {
+            if (!this.notify_on_diff_only || this.value !== new_value) {
+                this._value = new_value;
+                this.notify();
+            }
+        }
+        notify() {
+            this._observers.forEach((callback) => {
+                callback(this.value);
             });
-        };
-        Variable.prototype.get = function () {
+        }
+        get() {
             return this.value;
-        };
+        }
         /**
          * start observing
          * @param callback the callback which will be called with the new value
          */
-        Variable.prototype.observe = function (callback) {
+        observe(callback) {
             if (this._observers.indexOf(callback) > -1)
-                throw new Error("Observer already exists on Variable.");
+                throw new Error(`Observer already exists on Variable.`);
             this._observers.push(callback);
-        };
+        }
         /**
          * stop observing
          * @param callback the callback which was added earlier (When omitted removes all listeners)
          */
-        Variable.prototype.disregard = function (callback) {
+        disregard(callback) {
             if (callback == null)
                 this._observers = new Array();
-            var index_of_callback = this._observers.indexOf(callback, 0);
+            let index_of_callback = this._observers.indexOf(callback, 0);
             if (index_of_callback > -1)
                 this._observers.splice(index_of_callback, 1);
             else
-                throw new Error("Observer does not exist on Variable.");
-        };
-        return Variable;
-    }());
+                throw new Error(`Observer does not exist on Variable.`);
+        }
+    }
     Observable.Variable = Variable;
 })(Observable = exports.Observable || (exports.Observable = {}));
-exports.Observable = Observable;
 
 },{}],6:[function(require,module,exports){
 "use strict";
@@ -1416,61 +1397,101 @@ exports.Rect = void 0;
 /**
  * simple rect type
  */
-var Rect = /** @class */ (function () {
-    function Rect(left, top, width, height) {
-        if (left === void 0) { left = 0; }
-        if (top === void 0) { top = 0; }
-        if (width === void 0) { width = 0; }
-        if (height === void 0) { height = 0; }
+class Rect {
+    constructor(left = 0, top = 0, width = 0, height = 0, scroll_width = width, scroll_height = height, absolute_offs_x = 0, absolute_offs_y = 0) {
         this.left = left;
         this.top = top;
         this.width = width;
         this.height = height;
+        this.scroll_width = scroll_width;
+        this.scroll_height = scroll_height;
+        this.absolute_offs_x = absolute_offs_x;
+        this.absolute_offs_y = absolute_offs_y;
     }
     ;
-    return Rect;
-}());
+    get right() {
+        return this.left + this.width;
+    }
+    get bottom() {
+        return this.top + this.height;
+    }
+    get left_absolute() {
+        return this.left + this.absolute_offs_x;
+    }
+    get top_absolute() {
+        return this.top + this.absolute_offs_y;
+    }
+    get right_absolute() {
+        return this.right + this.absolute_offs_x;
+    }
+    get bottom_absolute() {
+        return this.bottom + this.absolute_offs_y;
+    }
+    apply_position_to_element(element, absolute = false, inner_element) {
+        if (absolute) {
+            element.style.left = `${this.left_absolute + (inner_element ? inner_element.clientLeft : 0)}px`;
+            element.style.top = `${this.top_absolute + (inner_element ? inner_element.clientTop : 0)}px`;
+        }
+        else {
+            element.style.left = `${this.left + (inner_element ? inner_element.clientLeft : 0)}px`;
+            element.style.top = `${this.top + (inner_element ? inner_element.clientTop : 0)}px`;
+        }
+    }
+    apply_width_and_height_to_element(element, inner_element) {
+        if (inner_element) {
+            element.style.width = `${inner_element.clientWidth}px`;
+            element.style.height = `${inner_element.clientHeight}px`;
+        }
+        else {
+            element.style.width = `${this.width}px`;
+            element.style.height = `${this.height}px`;
+        }
+    }
+    apply_to_element(element, position = true, absolute = false, inner_element) {
+        if (position)
+            this.apply_position_to_element(element, absolute, inner_element);
+        this.apply_width_and_height_to_element(element, inner_element);
+    }
+    static from_element(element) {
+        const bounding_rect = element.getBoundingClientRect();
+        return new Rect(bounding_rect.left, bounding_rect.top, bounding_rect.width, bounding_rect.height, element.scrollWidth, element.scrollHeight);
+    }
+    static from_rect(rect) {
+        let new_rect = new Rect();
+        for (let key in rect)
+            Reflect.set(new_rect, key, Reflect.get(rect, key));
+        return new_rect;
+    }
+}
 exports.Rect = Rect;
 
 },{}],7:[function(require,module,exports){
 "use strict";
-var __extends = (this && this.__extends) || (function () {
-    var extendStatics = function (d, b) {
-        extendStatics = Object.setPrototypeOf ||
-            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
-        return extendStatics(d, b);
-    };
-    return function (d, b) {
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
 Object.defineProperty(exports, "__esModule", { value: true });
-var webextension_polyfill_ts_1 = require("webextension-polyfill-ts");
-var dom_element_info_overlay_1 = require("./content/dom-element-info-overlay");
-var common_messages_1 = require("./common/common-messages");
-var dom_focus_manager_1 = require("./content/dom-focus-manager");
-var utils_1 = require("./content/utils");
+const webextension_polyfill_ts_1 = require("webextension-polyfill-ts");
+const dom_element_info_overlay_1 = require("./content/dom-element-info-overlay");
+const common_messages_1 = require("./common/common-messages");
+const dom_focus_manager_1 = require("./content/dom-focus-manager");
+const utils_1 = require("./content/utils");
+const input_extender_1 = require("./content/html-input-mirror/input-extender");
+const input_extender = new input_extender_1.PIIFilterInputExtender(document);
 var PII_Filter;
 (function (PII_Filter) {
-    var Frame = /** @class */ (function () {
-        function Frame() {
-            var _this = this;
+    class Frame {
+        constructor() {
             this.input_focus_manager = new dom_focus_manager_1.DOMFocusManager(document);
             // Listen to focus changes in other frames
-            webextension_polyfill_ts_1.browser.runtime.onMessage.addListener(function (message, sender) {
+            webextension_polyfill_ts_1.browser.runtime.onMessage.addListener((message, sender) => {
                 switch (message.type) {
                     case common_messages_1.ICommonMessage.Type.FOCUS: {
-                        var f_event = message;
-                        if (!f_event.valid && _this.active_element != null) {
-                            _this.active_element.removeEventListener('input', _this.text_input_listener.bind(_this));
-                            _this.active_element = null;
-                            _this.input_focus_manager.unfocus();
+                        let f_event = message;
+                        if (!f_event.valid && this.active_element != null) {
+                            this.active_element.removeEventListener('input', this.text_input_listener.bind(this));
+                            this.active_element = null;
+                            this.input_focus_manager.unfocus();
                         }
-                        else if (f_event.valid && _this.active_element == null && _this.last_active_element != null) { // restore focus
-                            _this.last_active_element.focus();
+                        else if (f_event.valid && this.active_element == null && this.last_active_element != null) { // restore focus
+                            this.last_active_element.focus();
                         }
                         break;
                     }
@@ -1480,66 +1501,60 @@ var PII_Filter;
                 }
             });
             // Register input management
-            this.input_focus_manager.active_focus.observe(function (element) {
-                var is_text_input = element != null && utils_1.Utils.DOM.is_text_input(element);
-                if (_this.active_element != null)
-                    _this.active_element.removeEventListener('input', _this.text_input_listener.bind(_this));
+            this.input_focus_manager.active_focus.observe((element) => {
+                let is_text_input = element != null && utils_1.Utils.DOM.is_text_input(element);
+                if (this.active_element != null)
+                    this.active_element.removeEventListener('input', this.text_input_listener.bind(this));
                 if (is_text_input) {
-                    _this.active_element = element;
+                    this.active_element = element;
                     // send initial focus
-                    webextension_polyfill_ts_1.browser.runtime.sendMessage(null, new common_messages_1.ICommonMessage.TextEntered(_this.active_element.value));
-                    _this.active_element.addEventListener('input', _this.text_input_listener.bind(_this));
+                    webextension_polyfill_ts_1.browser.runtime.sendMessage(null, new common_messages_1.ICommonMessage.TextEntered(this.active_element.value));
+                    this.active_element.addEventListener('input', this.text_input_listener.bind(this));
                     webextension_polyfill_ts_1.browser.runtime.sendMessage(null, new common_messages_1.ICommonMessage.Focus(true));
                 }
                 else {
                     webextension_polyfill_ts_1.browser.runtime.sendMessage(null, new common_messages_1.ICommonMessage.Focus(false));
-                    _this.active_element = null;
+                    this.active_element = null;
                 }
             });
         }
-        Object.defineProperty(Frame.prototype, "active_element", {
-            get: function () {
-                return this.active_element_;
-            },
-            set: function (element) {
-                this.last_active_element = this.active_element_;
-                this.active_element_ = element;
-            },
-            enumerable: false,
-            configurable: true
-        });
+        set active_element(element) {
+            this.last_active_element = this.active_element_;
+            this.active_element_ = element;
+        }
+        get active_element() {
+            return this.active_element_;
+        }
         /**
          * callback for text input
          * @param event not used
          */
-        Frame.prototype.text_input_listener = function (event) {
+        text_input_listener(event) {
             if (this.active_element != null)
                 webextension_polyfill_ts_1.browser.runtime.sendMessage(null, new common_messages_1.ICommonMessage.TextEntered(this.active_element.value));
-        };
-        return Frame;
-    }());
+        }
+    }
     PII_Filter.Frame = Frame;
     ;
     /**
      * Top level frame (for drawing overlays)
      */
-    var Top = /** @class */ (function (_super) {
-        __extends(Top, _super);
-        function Top() {
-            var _this = _super.call(this) || this;
+    class Top extends Frame {
+        constructor() {
+            super();
             // provides an overlay to get user's attention
             // private highlighted_element:    DOMRectHighlight = null; // (removed rect sum before dev e0f18b0, clarity)
             // tags an element with an overlay to provide info to the user
-            _this.info_overlay = null;
-            webextension_polyfill_ts_1.browser.runtime.onMessage.addListener(function (message, sender) {
+            this.info_overlay = null;
+            webextension_polyfill_ts_1.browser.runtime.onMessage.addListener((message, sender) => {
                 switch (message.type) {
                     case common_messages_1.ICommonMessage.Type.NOTIFY_PII: {
-                        var n_message = message;
-                        _this.update_overlay(n_message.severity_mapping, n_message.pii);
+                        let n_message = message;
+                        this.update_overlay(n_message.severity_mapping, n_message.pii);
                         break;
                     }
                     case common_messages_1.ICommonMessage.Type.NOTIFY_PII_PARSING: {
-                        _this.info_overlay.restart_fade_out_timer();
+                        this.info_overlay.restart_fade_out_timer();
                         break;
                     }
                     default: {
@@ -1547,141 +1562,226 @@ var PII_Filter;
                     }
                 }
             });
-            return _this;
         }
-        Top.prototype.update_overlay = function (severity, pii) {
-            if (severity === void 0) { severity = this.info_overlay.severity; }
+        update_overlay(severity = this.info_overlay.severity, pii) {
             if (this.info_overlay == null) {
                 this.info_overlay = new dom_element_info_overlay_1.DOMElementInfoOverlay(document);
-                this.info_overlay.on_focus_required.observe(function (req) {
+                this.info_overlay.on_focus_required.observe((req) => {
                     webextension_polyfill_ts_1.browser.runtime.sendMessage(null, new common_messages_1.ICommonMessage.Refocus());
                 });
             }
             this.info_overlay.severity = severity;
             if (pii != null)
                 this.info_overlay.pii = pii;
-        };
-        return Top;
-    }(Frame));
+        }
+    }
     PII_Filter.Top = Top;
     ;
-    var Content = /** @class */ (function () {
-        function Content() {
+    class Content {
+        constructor() {
             this.frame = (window.self !== window.top) ? new Frame() : new Top();
         }
-        return Content;
-    }());
+    }
     PII_Filter.Content = Content;
     ;
 })(PII_Filter || (PII_Filter = {}));
 ;
 new PII_Filter.Content();
 
-},{"./common/common-messages":3,"./content/dom-element-info-overlay":8,"./content/dom-focus-manager":9,"./content/utils":13,"webextension-polyfill-ts":1}],8:[function(require,module,exports){
+},{"./common/common-messages":3,"./content/dom-element-info-overlay":9,"./content/dom-focus-manager":10,"./content/html-input-mirror/input-extender":14,"./content/utils":16,"webextension-polyfill-ts":1}],8:[function(require,module,exports){
 "use strict";
-var __extends = (this && this.__extends) || (function () {
-    var extendStatics = function (d, b) {
-        extendStatics = Object.setPrototypeOf ||
-            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
-        return extendStatics(d, b);
-    };
-    return function (d, b) {
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.Bindings = void 0;
+class Bindings {
+    constructor() {
+        /**
+         * @protected
+         * holds unbinding calls
+         */
+        this.unbind_calls = new Array();
+    }
+    /**
+     * bind to an event and adds a clean-up function for delete()
+     * @param element the element to listen to
+     * @param event_name the event to listen for
+     * @param event_cb the callback which will be called
+     */
+    bind_event(element, event_name, event_cb) {
+        element.addEventListener(event_name, event_cb);
+        this.unbind_calls.push(() => {
+            element.removeEventListener(event_name, event_cb);
+        });
+    }
+    /**
+     * add raw unbind call
+     * @param unbind_call the call
+     */
+    add_unbinding(unbind_call) {
+        this.unbind_calls.push(unbind_call);
+    }
+    /**
+     * removes all listeners and cleans up
+     */
+    delete() {
+        for (let unbind_call of this.unbind_calls)
+            unbind_call();
+        this.unbind_calls = new Array();
+    }
+}
+exports.Bindings = Bindings;
+;
+
+},{}],9:[function(require,module,exports){
+"use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DOMElementInfoOverlay = void 0;
-var webextension_polyfill_ts_1 = require("webextension-polyfill-ts");
-var shadow_dom_div_1 = require("./shadow-dom-div");
-var dom_modal_1 = require("./dom-modal");
-var font_css_1 = require("./font_css");
-var observable_1 = require("../common/observable");
+const webextension_polyfill_ts_1 = require("webextension-polyfill-ts");
+const shadow_dom_1 = require("./shadow-dom");
+const dom_modal_1 = require("./dom-modal");
+const font_css_1 = require("./font_css");
+const observable_1 = require("../common/observable");
 // TODO: in order to toggle the modal to stay open and update as well some stuff will need to change in focus handling.
 /**
  * Provides an overlay with info/slider
  */
-var DOMElementInfoOverlay = /** @class */ (function (_super) {
-    __extends(DOMElementInfoOverlay, _super);
-    function DOMElementInfoOverlay(document) {
-        var _this = _super.call(this, document) || this;
-        _this.severity_ = 0;
-        _this.keep_open = false;
-        _this.mouse_inside = false;
-        _this.hide_after_ms = 10000;
-        _this.on_focus_required_ = new observable_1.Observable.Variable(false);
-        _this.on_focus_required = new observable_1.Observable(_this.on_focus_required_);
-        _this.modal_window = new dom_modal_1.DOMModal(document);
-        _this.modal_window.title_div.innerText = 'Informatie in het huidige tekstveld:';
-        var style = _this.shadow.ownerDocument.createElement('style');
-        style.innerText = "    \n            " + font_css_1.get_fonts() + "\n\n            body {\n                padding:            0px;\n                margin:             0px;\n            }\n            .severity-bar-outer {\n                transition:         0.25s ease-in;\n                display:            block;\n                visibility:         visible;\n                position:           fixed;\n                height:             0px;\n                bottom:             0%;\n                width:              100%;\n                padding:            0px;\n                border-top-style:   solid;\n                border-top-width:   1.5px;\n                border-top-color:   rgba(50, 50, 50, 0.75);\n                background-color:   rgba(255, 255, 255, 0.9);\n                z-index:            9999;\n                opacity:            0.0;\n            }\n            .severity-bar-container {\n                display:            block;\n                background-image:   linear-gradient(to right, yellow, orange, red, purple);\n                width:              100%;\n                height:             25px;\n            }\n            .severity-bar-indicator {\n                transition:         0.75s ease-in;\n                visibility:         visible;\n                background-color:   rgba(255, 255, 255, 0.95);\n                position:           fixed;\n                right:              0%;\n                width:              100%;\n                height:             100%;\n            }\n            .severity-bar-text {\n                display:            flex;\n                justify-content:    center;\n                flex-wrap:          nowrap;\n                width:              100%;\n                height:             100%;\n            }\n            .severity-display-item {\n                display:            inline-block;\n                align-self:         center;\n                z-index:            99999;\n            }\n            .severity-text-span {\n                margin-right:       10px;\n                font-family:        'Montserrat', sans-serif;\n                font-weight:        400;\n                font-size:          12pt;\n                color:              black;\n                align-self:         center;\n            }\n            .info-icon {\n                margin-top:         3px;\n                width:              15px;\n                align-self:         center;\n            }\n        ";
-        _this.shadow.appendChild(style);
-        _this.div.classList.add('severity-bar-outer');
-        _this.severity_bar_container = _this.shadow.ownerDocument.createElement('div');
-        _this.severity_bar_container.classList.add('severity-bar-container');
-        _this.div.appendChild(_this.severity_bar_container);
-        _this.severity_bar_indicator = _this.shadow.ownerDocument.createElement('div');
-        _this.severity_bar_indicator.classList.add('severity-bar-indicator');
-        _this.severity_bar_container.appendChild(_this.severity_bar_indicator);
-        _this.severity_bar_text_div = _this.shadow.ownerDocument.createElement('div');
-        _this.severity_bar_text_div.classList.add('severity-bar-text');
-        var img_div = _this.shadow.ownerDocument.createElement('div');
+class DOMElementInfoOverlay extends shadow_dom_1.ShadowDomDiv {
+    constructor(document) {
+        super(document);
+        this.severity_ = 0;
+        this.keep_open = false;
+        this.mouse_inside = false;
+        this.hide_after_ms = 10000;
+        this.on_focus_required_ = new observable_1.Observable.Variable(false);
+        this.on_focus_required = new observable_1.Observable(this.on_focus_required_);
+        this.modal_window = new dom_modal_1.DOMModal(document);
+        this.modal_window.title_div.innerText = 'Informatie in het huidige tekstveld:';
+        let style = this.shadow.ownerDocument.createElement('style');
+        style.innerText = `    
+            ${font_css_1.get_fonts()}
+
+            body {
+                padding:            0px;
+                margin:             0px;
+            }
+            .severity-bar-outer {
+                transition:         0.25s ease-in;
+                display:            block;
+                visibility:         visible;
+                position:           fixed;
+                height:             0px;
+                bottom:             0%;
+                width:              100%;
+                padding:            0px;
+                border-top-style:   solid;
+                border-top-width:   1.5px;
+                border-top-color:   rgba(50, 50, 50, 0.75);
+                background-color:   rgba(255, 255, 255, 0.9);
+                z-index:            9999;
+                opacity:            0.0;
+            }
+            .severity-bar-container {
+                display:            block;
+                background-image:   linear-gradient(to right, yellow, orange, red, purple);
+                width:              100%;
+                height:             25px;
+            }
+            .severity-bar-indicator {
+                transition:         0.75s ease-in;
+                visibility:         visible;
+                background-color:   rgba(255, 255, 255, 0.95);
+                position:           fixed;
+                right:              0%;
+                width:              100%;
+                height:             100%;
+            }
+            .severity-bar-text {
+                display:            flex;
+                justify-content:    center;
+                flex-wrap:          nowrap;
+                width:              100%;
+                height:             100%;
+            }
+            .severity-display-item {
+                display:            inline-block;
+                align-self:         center;
+                z-index:            99999;
+            }
+            .severity-text-span {
+                margin-right:       10px;
+                font-family:        'Montserrat', sans-serif;
+                font-weight:        400;
+                font-size:          12pt;
+                color:              black;
+                align-self:         center;
+            }
+            .info-icon {
+                margin-top:         3px;
+                width:              15px;
+                align-self:         center;
+            }
+        `;
+        this.shadow.appendChild(style);
+        this.div.classList.add('severity-bar-outer');
+        this.severity_bar_container = this.shadow.ownerDocument.createElement('div');
+        this.severity_bar_container.classList.add('severity-bar-container');
+        this.div.appendChild(this.severity_bar_container);
+        this.severity_bar_indicator = this.shadow.ownerDocument.createElement('div');
+        this.severity_bar_indicator.classList.add('severity-bar-indicator');
+        this.severity_bar_container.appendChild(this.severity_bar_indicator);
+        this.severity_bar_text_div = this.shadow.ownerDocument.createElement('div');
+        this.severity_bar_text_div.classList.add('severity-bar-text');
+        let img_div = this.shadow.ownerDocument.createElement('div');
         img_div.classList.add('severity-display-item');
-        var img = _this.shadow.ownerDocument.createElement('img');
+        let img = this.shadow.ownerDocument.createElement('img');
         img.classList.add('info-icon');
         img.src = webextension_polyfill_ts_1.browser.runtime.getURL('assets/info.png');
         img_div.appendChild(img);
-        _this.div.addEventListener('mousedown', (function (x, event) {
-            _this.keep_open = true;
-            _this.modal_window.show(true, (function (x, event) {
-                _this.modal_window.hide();
-                _this.keep_open = false;
-                _this.show(_this.mouse_inside);
-                _this.on_focus_required_.value = true;
-            }).bind(_this));
-            _this.on_focus_required_.value = true;
-        }).bind(_this));
-        _this.div.addEventListener('mouseover', (function (x, event) {
-            _this.mouse_inside = true;
-            if (!_this.keep_open) {
-                _this.modal_window.show();
-                _this.show(_this.mouse_inside);
+        this.div.addEventListener('mousedown', ((x, event) => {
+            this.keep_open = true;
+            this.modal_window.show(true, ((x, event) => {
+                this.modal_window.hide();
+                this.keep_open = false;
+                this.show(this.mouse_inside);
+                this.on_focus_required_.value = true;
+            }).bind(this));
+            this.on_focus_required_.value = true;
+        }).bind(this));
+        this.div.addEventListener('mouseover', ((x, event) => {
+            this.mouse_inside = true;
+            if (!this.keep_open) {
+                this.modal_window.show();
+                this.show(this.mouse_inside);
             }
-        }).bind(_this));
-        _this.div.addEventListener('mouseout', (function (x, event) {
-            if (!_this.keep_open) {
-                _this.modal_window.hide();
-                _this.restart_fade_out_timer();
+        }).bind(this));
+        this.div.addEventListener('mouseout', ((x, event) => {
+            if (!this.keep_open) {
+                this.modal_window.hide();
+                this.restart_fade_out_timer();
             }
-            _this.mouse_inside = false;
-        }).bind(_this));
-        var span_div = _this.shadow.ownerDocument.createElement('div');
+            this.mouse_inside = false;
+        }).bind(this));
+        let span_div = this.shadow.ownerDocument.createElement('div');
         span_div.classList.add('severity-display-item');
-        var span = _this.shadow.ownerDocument.createElement('span');
+        let span = this.shadow.ownerDocument.createElement('span');
         span.classList.add('severity-text-span');
         span.innerText = 'Persoonlijke Informatie Aanwezig';
         span_div.appendChild(span);
-        _this.severity_bar_text_div.appendChild(span_div);
-        _this.severity_bar_text_div.appendChild(img_div);
-        _this.severity_bar_container.appendChild(_this.severity_bar_text_div);
-        _this.hide();
-        return _this;
+        this.severity_bar_text_div.appendChild(span_div);
+        this.severity_bar_text_div.appendChild(img_div);
+        this.severity_bar_container.appendChild(this.severity_bar_text_div);
+        this.hide();
     }
-    DOMElementInfoOverlay.prototype.clear_fade_out_timer = function () {
+    clear_fade_out_timer() {
         if (this.fade_out_timer)
             window.clearTimeout(this.fade_out_timer);
-    };
-    DOMElementInfoOverlay.prototype.restart_fade_out_timer = function () {
-        var _this = this;
+    }
+    restart_fade_out_timer() {
         this.clear_fade_out_timer();
-        this.fade_out_timer = window.setTimeout(function () {
-            _this.hide();
+        this.fade_out_timer = window.setTimeout(() => {
+            this.hide();
         }, this.hide_after_ms);
-    };
-    DOMElementInfoOverlay.prototype.show = function (keep_open) {
-        if (keep_open === void 0) { keep_open = false; }
+    }
+    show(keep_open = false) {
         this.div.style.opacity = '1.0';
         this.div.style.height = '25px';
         this.div.style.visibility = 'visible';
@@ -1689,56 +1789,47 @@ var DOMElementInfoOverlay = /** @class */ (function (_super) {
         this.clear_fade_out_timer();
         if (!keep_open)
             this.restart_fade_out_timer();
-    };
-    DOMElementInfoOverlay.prototype.hide = function () {
+    }
+    hide() {
         this.div.style.opacity = '0.0';
         this.div.style.height = '0px';
         this.div.style.visibility = 'hidden';
         this.div.style.pointerEvents = 'none';
         this.keep_open = false;
         this.modal_window.hide();
-    };
-    Object.defineProperty(DOMElementInfoOverlay.prototype, "severity", {
-        get: function () {
-            return this.severity_;
-        },
-        set: function (severity) {
-            this.severity_ = severity;
-            if (!this.keep_open) {
-                this.severity_bar_indicator.style.width = (1 - severity) * 100 + "%";
-                if (severity == 0.0)
-                    this.hide();
-                else
-                    this.show(this.mouse_inside);
-            }
-        },
-        enumerable: false,
-        configurable: true
-    });
-    Object.defineProperty(DOMElementInfoOverlay.prototype, "pii", {
-        set: function (all_pii) {
-            if (!this.keep_open)
-                this.modal_window.pii = all_pii;
-        },
-        enumerable: false,
-        configurable: true
-    });
-    return DOMElementInfoOverlay;
-}(shadow_dom_div_1.ShadowDomDiv));
+    }
+    get severity() {
+        return this.severity_;
+    }
+    set severity(severity) {
+        this.severity_ = severity;
+        if (!this.keep_open) {
+            this.severity_bar_indicator.style.width = `${(1 - severity) * 100}%`;
+            if (severity == 0.0)
+                this.hide();
+            else
+                this.show(this.mouse_inside);
+        }
+    }
+    set pii(all_pii) {
+        if (!this.keep_open)
+            this.modal_window.pii = all_pii;
+    }
+}
 exports.DOMElementInfoOverlay = DOMElementInfoOverlay;
 ;
 
-},{"../common/observable":5,"./dom-modal":10,"./font_css":11,"./shadow-dom-div":12,"webextension-polyfill-ts":1}],9:[function(require,module,exports){
+},{"../common/observable":5,"./dom-modal":11,"./font_css":12,"./shadow-dom":15,"webextension-polyfill-ts":1}],10:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DOMFocusManager = void 0;
-var observable_1 = require("../common/observable");
-var DOMFocusManager = /** @class */ (function () {
+const observable_1 = require("../common/observable");
+class DOMFocusManager {
     /**
      * creates and binds the focus manager
      * @param element the DOM element to bind to
      */
-    function DOMFocusManager(element) {
+    constructor(element) {
         this._active_focus = new observable_1.Observable.Variable();
         this.active_focus = new observable_1.Observable(this._active_focus);
         element.addEventListener('focusin', this.focus_in.bind(this), false);
@@ -1748,9 +1839,9 @@ var DOMFocusManager = /** @class */ (function () {
      * callback for focusin event
      * @param event the event
      */
-    DOMFocusManager.prototype.focus_in = function (event) {
+    focus_in(event) {
         if (event != null) {
-            var target = event.target;
+            let target = event.target;
             // traverse possible shadow roots
             while (target.shadowRoot && target.shadowRoot.activeElement)
                 target = target.shadowRoot.activeElement;
@@ -1758,131 +1849,268 @@ var DOMFocusManager = /** @class */ (function () {
         }
         else
             this.focus_out(null);
-    };
+    }
     /**
      * callback for focusout event
      * @param event the event
      */
-    DOMFocusManager.prototype.focus_out = function (event) {
+    focus_out(event) {
         if (this._active_focus.value != null)
             this._active_focus.value = null;
-    };
+    }
     /**
      * unfocus the input manager
      */
-    DOMFocusManager.prototype.unfocus = function () {
+    unfocus() {
         this._active_focus.value = null;
-    };
-    return DOMFocusManager;
-}());
+    }
+}
 exports.DOMFocusManager = DOMFocusManager;
 ;
 
-},{"../common/observable":5}],10:[function(require,module,exports){
+},{"../common/observable":5}],11:[function(require,module,exports){
 "use strict";
-var __extends = (this && this.__extends) || (function () {
-    var extendStatics = function (d, b) {
-        extendStatics = Object.setPrototypeOf ||
-            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
-        return extendStatics(d, b);
-    };
-    return function (d, b) {
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DOMModal = void 0;
-var webextension_polyfill_ts_1 = require("webextension-polyfill-ts");
-var shadow_dom_div_1 = require("./shadow-dom-div");
-var font_css_1 = require("./font_css");
-var DOMModal = /** @class */ (function (_super) {
-    __extends(DOMModal, _super);
-    function DOMModal(document) {
-        var _this = _super.call(this, document) || this;
-        var style = _this.shadow.ownerDocument.createElement('style');
-        style.innerText = "\n            " + font_css_1.get_fonts() + "\n\n            body {\n                padding:            0px;\n                margin:             0px;\n            }\n            .modal {\n                transition:         0.15s ease-in-out;\n                visibility:         hidden;\n                position:           fixed; \n                left:               0; \n                top:                0;\n                transform:          translate(0, -25px);\n                width:              100%;\n                height:             100%;\n                background-color:   rgba(0, 0, 0, 0.5);\n                z-index:            99999;\n            }\n            .modal-wrap {\n                transition:         0.15s ease-in-out;\n                position:           fixed;\n                min-width:          10cm;\n                max-width:          20cm;\n                width:              50%;\n                left:               50%;\n                top:                50%;\n                transform:          translate(-50%, -50%);\n                filter:             drop-shadow(0px 2px 4px #222233);\n            }\n            .top-styling {\n                display:            flex;\n                min-height:         20px;\n                background-color:   rgba(15, 15, 50, 0.75);\n                border:             3px solid rgba(25, 25, 60, 0.75);\n                color:              white;\n                vertical-align:     middle;\n            }\n            .center-styling {\n                font-family:        'Montserrat', sans-serif;\n                font-weight:        300;\n                font-size:          12pt;\n                background-color:   rgba(255, 255, 255, 0.975);\n                min-height:         40px;\n                max-height:         75vh;\n                overflow:           auto;\n            }\n            .bottom-styling {\n                font-family:        'Montserrat', sans-serif;\n                font-weight:        300;\n                font-size:          12pt;\n                background-color:   rgba(245, 245, 245, 0.975);\n                min-height:         40px;\n                padding:            10px;\n                padding-left:       30px;\n                padding-right:      30px;\n                text-align:         center;\n            }\n            .min-padding {\n                padding:            10px;\n            }\n            .max-padding {\n                padding:            20px;\n            }\n            .pii-icon {\n                height:             40px;\n            }\n            .logo {\n                display:            inline-block;\n                user-select:        none;\n                align-self:         center;\n                margin:             0 auto;\n            }\n            .title {\n                flex:               1;\n                display:            inline-block;\n                font-family:        'Montserrat', sans-serif;\n                font-size:          15pt;\n                font-weight:        900;\n                color:              white;\n                text-align:         center;\n                align-self:         center;\n                margin:             0 auto;\n            }\n            .modal-content {\n                height:             100%;\n            }\n            .content {\n                width:              100%;\n                height:             100%;\n            }\n            .close-btn {\n                display:            inline-block;\n                align-self:         center;\n                margin:             0 auto;\n                color:              rgb(150, 150, 150);\n                font-size:          24px; \n                font-weight:        bold;\n                user-select:        none;\n            }\n            .close-btn:hover {\n                color:              rgb(255, 255, 255);\n            }\n            table {\n                table-layout:       fixed;\n                color:              black;\n                width:              100%;\n                border:             2px solid rgba(225, 225, 225, 0.35);\n            }\n            table, td, th {\n                border-collapse: collapse;\n            }\n            td, th {\n                text-align:         left;\n            }\n            tr {\n            }\n            th {\n                font-family:        'Montserrat', sans-serif;\n                font-size:          12pt;\n                font-weight:        500;\n                background-color:   rgba(245, 245, 245, 0.75);\n                color:              black;\n                margin-bottom:      5px;\n                padding-left:       7px;\n                padding-right:      7px;\n            }\n            table th {\n                border-bottom:      2.0px solid rgba(0, 0, 0, 0.4); \n                border-left:        1.5px solid rgba(100, 100, 100, 0.5);\n                border-right:       1.5px solid rgba(100, 100, 100, 0.5);\n            }\n            table tr th:first-child {\n                border-left: 0;\n            }\n            table tr th:last-child {\n                border-right: 0;\n            }\n\n            td {\n                font-family:        'Montserrat', sans-serif;\n                font-weight:        250;\n                font-size:          12pt;\n                padding-left:       5px;\n                word-wrap:          anywhere;\n            }\n            table td {\n                border:             1.5px solid rgba(225, 225, 225, 0.6);\n            }\n            table tr:first-child td {\n                border-top:         0;\n            }\n            table tr td:first-child {\n                border-left:        0;\n            }\n            table tr:last-child td {\n                border-bottom:      0;\n            }\n            table tr td:last-child {\n                border-right:       0;\n            }\n        ";
-        _this.shadow.appendChild(style);
-        _this.div.classList.add('modal');
-        _this.modal_wrap = _this.shadow.ownerDocument.createElement('div');
-        _this.modal_wrap.classList.add('modal-wrap');
-        _this.div.appendChild(_this.modal_wrap);
-        var modal_content_top = _this.shadow.ownerDocument.createElement('div');
+const webextension_polyfill_ts_1 = require("webextension-polyfill-ts");
+const shadow_dom_1 = require("./shadow-dom");
+const font_css_1 = require("./font_css");
+class DOMModal extends shadow_dom_1.ShadowDomDiv {
+    constructor(document) {
+        super(document);
+        let style = this.shadow.ownerDocument.createElement('style');
+        style.innerText = `
+            ${font_css_1.get_fonts()}
+
+            body {
+                padding:            0px;
+                margin:             0px;
+            }
+            .modal {
+                transition:         0.15s ease-in-out;
+                visibility:         hidden;
+                position:           fixed; 
+                left:               0; 
+                top:                0;
+                transform:          translate(0, -25px);
+                width:              100%;
+                height:             100%;
+                background-color:   rgba(0, 0, 0, 0.5);
+                z-index:            99999;
+            }
+            .modal-wrap {
+                transition:         0.15s ease-in-out;
+                position:           fixed;
+                min-width:          10cm;
+                max-width:          20cm;
+                width:              50%;
+                left:               50%;
+                top:                50%;
+                transform:          translate(-50%, -50%);
+                filter:             drop-shadow(0px 2px 4px #222233);
+            }
+            .top-styling {
+                display:            flex;
+                min-height:         20px;
+                background-color:   rgba(15, 15, 50, 0.75);
+                border:             3px solid rgba(25, 25, 60, 0.75);
+                color:              white;
+                vertical-align:     middle;
+            }
+            .center-styling {
+                font-family:        'Montserrat', sans-serif;
+                font-weight:        300;
+                font-size:          12pt;
+                background-color:   rgba(255, 255, 255, 0.975);
+                min-height:         40px;
+                max-height:         75vh;
+                overflow:           auto;
+            }
+            .bottom-styling {
+                font-family:        'Montserrat', sans-serif;
+                font-weight:        300;
+                font-size:          12pt;
+                background-color:   rgba(245, 245, 245, 0.975);
+                min-height:         40px;
+                padding:            10px;
+                padding-left:       30px;
+                padding-right:      30px;
+                text-align:         center;
+            }
+            .min-padding {
+                padding:            10px;
+            }
+            .max-padding {
+                padding:            20px;
+            }
+            .pii-icon {
+                height:             40px;
+            }
+            .logo {
+                display:            inline-block;
+                user-select:        none;
+                align-self:         center;
+                margin:             0 auto;
+            }
+            .title {
+                flex:               1;
+                display:            inline-block;
+                font-family:        'Montserrat', sans-serif;
+                font-size:          15pt;
+                font-weight:        900;
+                color:              white;
+                text-align:         center;
+                align-self:         center;
+                margin:             0 auto;
+            }
+            .modal-content {
+                height:             100%;
+            }
+            .content {
+                width:              100%;
+                height:             100%;
+            }
+            .close-btn {
+                display:            inline-block;
+                align-self:         center;
+                margin:             0 auto;
+                color:              rgb(150, 150, 150);
+                font-size:          24px; 
+                font-weight:        bold;
+                user-select:        none;
+            }
+            .close-btn:hover {
+                color:              rgb(255, 255, 255);
+            }
+            table {
+                table-layout:       fixed;
+                color:              black;
+                width:              100%;
+                border:             2px solid rgba(225, 225, 225, 0.35);
+            }
+            table, td, th {
+                border-collapse: collapse;
+            }
+            td, th {
+                text-align:         left;
+            }
+            tr {
+            }
+            th {
+                font-family:        'Montserrat', sans-serif;
+                font-size:          12pt;
+                font-weight:        500;
+                background-color:   rgba(245, 245, 245, 0.75);
+                color:              black;
+                margin-bottom:      5px;
+                padding-left:       7px;
+                padding-right:      7px;
+            }
+            table th {
+                border-bottom:      2.0px solid rgba(0, 0, 0, 0.4); 
+                border-left:        1.5px solid rgba(100, 100, 100, 0.5);
+                border-right:       1.5px solid rgba(100, 100, 100, 0.5);
+            }
+            table tr th:first-child {
+                border-left: 0;
+            }
+            table tr th:last-child {
+                border-right: 0;
+            }
+
+            td {
+                font-family:        'Montserrat', sans-serif;
+                font-weight:        250;
+                font-size:          12pt;
+                padding-left:       5px;
+                word-wrap:          anywhere;
+            }
+            table td {
+                border:             1.5px solid rgba(225, 225, 225, 0.6);
+            }
+            table tr:first-child td {
+                border-top:         0;
+            }
+            table tr td:first-child {
+                border-left:        0;
+            }
+            table tr:last-child td {
+                border-bottom:      0;
+            }
+            table tr td:last-child {
+                border-right:       0;
+            }
+        `;
+        this.shadow.appendChild(style);
+        this.div.classList.add('modal');
+        this.modal_wrap = this.shadow.ownerDocument.createElement('div');
+        this.modal_wrap.classList.add('modal-wrap');
+        this.div.appendChild(this.modal_wrap);
+        let modal_content_top = this.shadow.ownerDocument.createElement('div');
         modal_content_top.classList.add('modal-content', 'top-styling', 'min-padding');
-        var img_div = _this.shadow.ownerDocument.createElement('div');
+        let img_div = this.shadow.ownerDocument.createElement('div');
         img_div.classList.add('logo');
-        var img = _this.shadow.ownerDocument.createElement('img');
+        let img = this.shadow.ownerDocument.createElement('img');
         img.classList.add('pii-icon');
         img.src = webextension_polyfill_ts_1.browser.runtime.getURL('assets/logos/a/PIIlogo.png');
         img_div.appendChild(img);
         modal_content_top.appendChild(img_div);
-        _this.title_div = _this.shadow.ownerDocument.createElement('div');
-        _this.title_div.classList.add('title');
-        modal_content_top.appendChild(_this.title_div);
-        _this.close_btn = _this.shadow.ownerDocument.createElement('div');
-        _this.close_btn.classList.add('close-btn');
-        _this.close_btn.innerHTML = '&times;';
-        _this.close_btn.style.visibility = 'none';
-        _this.close_btn.addEventListener('mousedown', (function (x, event) {
-            if (_this.on_closed != null)
-                _this.on_closed(x, event);
-        }).bind(_this));
-        modal_content_top.appendChild(_this.close_btn);
-        _this.modal_wrap.appendChild(modal_content_top);
-        var modal_content_center = _this.shadow.ownerDocument.createElement('div');
+        this.title_div = this.shadow.ownerDocument.createElement('div');
+        this.title_div.classList.add('title');
+        modal_content_top.appendChild(this.title_div);
+        this.close_btn = this.shadow.ownerDocument.createElement('div');
+        this.close_btn.classList.add('close-btn');
+        this.close_btn.innerHTML = '&times;';
+        this.close_btn.style.visibility = 'none';
+        this.close_btn.addEventListener('mousedown', ((x, event) => {
+            if (this.on_closed != null)
+                this.on_closed(x, event);
+        }).bind(this));
+        modal_content_top.appendChild(this.close_btn);
+        this.modal_wrap.appendChild(modal_content_top);
+        let modal_content_center = this.shadow.ownerDocument.createElement('div');
         modal_content_center.classList.add('modal-content', 'center-styling', 'max-padding');
-        _this.content_div = _this.shadow.ownerDocument.createElement('div');
-        _this.content_div.classList.add('content');
-        modal_content_center.appendChild(_this.content_div);
-        _this.modal_wrap.appendChild(modal_content_center);
-        var modal_content_bottom = _this.shadow.ownerDocument.createElement('div');
+        this.content_div = this.shadow.ownerDocument.createElement('div');
+        this.content_div.classList.add('content');
+        modal_content_center.appendChild(this.content_div);
+        this.modal_wrap.appendChild(modal_content_center);
+        let modal_content_bottom = this.shadow.ownerDocument.createElement('div');
         modal_content_bottom.classList.add('modal-content', 'bottom-styling');
         modal_content_bottom.innerText = 'Wees waakzaam met het delen van persoonlijke informatie op sociale media,' +
             ' webshops, blogposts en in comments en reviews.';
-        _this.modal_wrap.appendChild(modal_content_bottom);
-        _this.hide();
-        return _this;
+        this.modal_wrap.appendChild(modal_content_bottom);
+        this.hide();
     }
-    Object.defineProperty(DOMModal.prototype, "pii", {
-        set: function (all_pii) {
-            // create table of personally identifiable information
-            this.content_div.innerHTML = '';
-            if (all_pii.length == 0) {
-                return;
+    set pii(all_pii) {
+        // create table of personally identifiable information
+        this.content_div.innerHTML = '';
+        if (all_pii.length == 0) {
+            return;
+        }
+        let table = this.shadow.ownerDocument.createElement('table');
+        let header_row = this.shadow.ownerDocument.createElement('tr');
+        for (let header of all_pii[0][0]) {
+            let col = this.shadow.ownerDocument.createElement('th');
+            col.innerText = header;
+            header_row.appendChild(col);
+        }
+        table.appendChild(header_row);
+        for (let i = 1; i < all_pii.length; ++i) {
+            let row_raw = all_pii[i][0];
+            let [score, severity] = [all_pii[i][1], all_pii[i][2]];
+            let inv_severity = (1.0 - severity) * 255;
+            let row = this.shadow.ownerDocument.createElement('tr');
+            row.style.background = `rgb(255, ${inv_severity}, ${inv_severity})`;
+            for (let col_raw of row_raw) {
+                let col = this.shadow.ownerDocument.createElement('td');
+                col.innerText = col_raw;
+                row.appendChild(col);
             }
-            var table = this.shadow.ownerDocument.createElement('table');
-            var header_row = this.shadow.ownerDocument.createElement('tr');
-            for (var _i = 0, _a = all_pii[0][0]; _i < _a.length; _i++) {
-                var header = _a[_i];
-                var col = this.shadow.ownerDocument.createElement('th');
-                col.innerText = header;
-                header_row.appendChild(col);
-            }
-            table.appendChild(header_row);
-            for (var i = 1; i < all_pii.length; ++i) {
-                var row_raw = all_pii[i][0];
-                var _b = [all_pii[i][1], all_pii[i][2]], score = _b[0], severity = _b[1];
-                var inv_severity = (1.0 - severity) * 255;
-                var row = this.shadow.ownerDocument.createElement('tr');
-                row.style.background = "rgb(255, " + inv_severity + ", " + inv_severity + ")";
-                for (var _c = 0, row_raw_1 = row_raw; _c < row_raw_1.length; _c++) {
-                    var col_raw = row_raw_1[_c];
-                    var col = this.shadow.ownerDocument.createElement('td');
-                    col.innerText = col_raw;
-                    row.appendChild(col);
-                }
-                table.appendChild(row);
-            }
-            this.content_div.appendChild(table);
-        },
-        enumerable: false,
-        configurable: true
-    });
-    DOMModal.prototype.show = function (with_close_button, fn) {
-        if (with_close_button === void 0) { with_close_button = false; }
-        if (fn === void 0) { fn = null; }
+            table.appendChild(row);
+        }
+        this.content_div.appendChild(table);
+    }
+    show(with_close_button = false, fn = null) {
         if (with_close_button) {
             this.close_btn.style.visibility = 'visible';
             this.on_closed = fn;
@@ -1894,79 +2122,836 @@ var DOMModal = /** @class */ (function (_super) {
         this.div.style.opacity = '1.0';
         this.div.style.visibility = 'visible';
         this.div.style.pointerEvents = 'auto';
-    };
-    DOMModal.prototype.hide = function () {
+    }
+    hide() {
         this.modal_wrap.style.top = '55%';
         this.div.style.opacity = '0.0';
         this.div.style.visibility = 'hidden';
         this.div.style.pointerEvents = 'none';
-    };
-    return DOMModal;
-}(shadow_dom_div_1.ShadowDomDiv));
+    }
+}
 exports.DOMModal = DOMModal;
 ;
 
-},{"./font_css":11,"./shadow-dom-div":12,"webextension-polyfill-ts":1}],11:[function(require,module,exports){
+},{"./font_css":12,"./shadow-dom":15,"webextension-polyfill-ts":1}],12:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.get_fonts = void 0;
-var webextension_polyfill_ts_1 = require("webextension-polyfill-ts");
+const webextension_polyfill_ts_1 = require("webextension-polyfill-ts");
 function get_fonts() {
-    var url = function (u) {
-        return webextension_polyfill_ts_1.browser.runtime.getURL("assets/fonts/webfonts/" + u);
+    let url = (u) => {
+        return webextension_polyfill_ts_1.browser.runtime.getURL(`assets/fonts/webfonts/${u}`);
     };
-    return "\n    @font-face {\n        font-family: \"Montserrat\";\n        font-weight: 100;\n        font-style: normal;\n        src: url(\"" + url('Montserrat-Thin.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('Montserrat-Thin.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Thin-Italic **/\n    @font-face {\n        font-family: \"Montserrat\";\n        font-weight: 100;\n        font-style: italic;\n        src: url(\"" + url('Montserrat-ThinItalic.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('Montserrat-ThinItalic.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat ExtraLight **/\n    @font-face {\n        font-family: \"Montserrat\";\n        font-weight: 200;\n        font-style: normal;\n        src: url(\"" + url('Montserrat-ExtraLight.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('Montserrat-ExtraLight.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat ExtraLight-Italic **/\n    @font-face {\n        font-family: \"Montserrat\";\n        font-weight: 200;\n        font-style: italic;\n        src: url(\"" + url('Montserrat-ExtraLightItalic.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('Montserrat-ExtraLightItalic.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Light **/\n    @font-face {\n        font-family: \"Montserrat\";\n        font-weight: 300;\n        font-style: normal;\n        src: url(\"" + url('Montserrat-Light.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('Montserrat-Light.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Light-Italic **/\n    @font-face {\n        font-family: \"Montserrat\";\n        font-weight: 300;\n        font-style: italic;\n        src: url(\"" + url('Montserrat-LightItalic.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('Montserrat-LightItalic.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Regular **/\n    @font-face {\n        font-family: \"Montserrat\";\n        font-weight: 400;\n        font-style: normal;\n        src: url(\"" + url('Montserrat-Regular.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('Montserrat-Regular.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Regular-Italic **/\n    @font-face {\n        font-family: \"Montserrat\";\n        font-weight: 400;\n        font-style: italic;\n        src: url(\"" + url('Montserrat-Italic.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('Montserrat-Italic.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Medium **/\n    @font-face {\n        font-family: \"Montserrat\";\n        font-weight: 500;\n        font-style: normal;\n        src: url(\"" + url('Montserrat-Medium.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('Montserrat-Medium.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Medium-Italic **/\n    @font-face {\n        font-family: \"Montserrat\";\n        font-weight: 500;\n        font-style: italic;\n        src: url(\"" + url('Montserrat-MediumItalic.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('Montserrat-MediumItalic.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat SemiBold **/\n    @font-face {\n        font-family: \"Montserrat\";\n        font-weight: 600;\n        font-style: normal;\n        src: url(\"" + url('Montserrat-SemiBold.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('Montserrat-SemiBold.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat SemiBold-Italic **/\n    @font-face {\n        font-family: \"Montserrat\";\n        font-weight: 600;\n        font-style: italic;\n        src: url(\"" + url('Montserrat-SemiBoldItalic.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('Montserrat-SemiBoldItalic.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Bold **/\n    @font-face {\n        font-family: \"Montserrat\";\n        font-weight: 700;\n        font-style: normal;\n        src: url(\"" + url('Montserrat-Bold.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('Montserrat-Bold.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Bold-Italic **/\n    @font-face {\n        font-family: \"Montserrat\";\n        font-weight: 700;\n        font-style: italic;\n        src: url(\"" + url('Montserrat-BoldItalic.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('Montserrat-BoldItalic.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat ExtraBold **/\n    @font-face {\n        font-family: \"Montserrat\";\n        font-weight: 800;\n        font-style: normal;\n        src: url(\"" + url('Montserrat-ExtraBold.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('Montserrat-ExtraBold.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat ExtraBold-Italic **/\n    @font-face {\n        font-family: \"Montserrat\";\n        font-weight: 800;\n        font-style: italic;\n        src: url(\"" + url('Montserrat-ExtraBoldItalic.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('Montserrat-ExtraBoldItalic.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Black **/\n    @font-face {\n        font-family: \"Montserrat\";\n        font-weight: 900;\n        font-style: normal;\n        src: url(\"" + url('Montserrat-Black.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('Montserrat-Black.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Black-Italic **/\n    @font-face {\n        font-family: \"Montserrat\";\n        font-weight: 900;\n        font-style: italic;\n        src: url(\"" + url('Montserrat-BlackItalic.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('Montserrat-BlackItalic.woff') + "\") format(\"woff\");\n    }\n    \n    /** =================== MONTSERRAT ALTERNATES =================== **/\n    \n    /** Montserrat Alternates Thin **/\n    @font-face {\n        font-family: \"Montserrat Alternates\";\n        font-weight: 100;\n        font-style: normal;\n        src: url(\"" + url('MontserratAlternates-Thin.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('MontserratAlternates-Thin.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Alternates Thin-Italic **/\n    @font-face {\n        font-family: \"Montserrat Alternates\";\n        font-weight: 100;\n        font-style: italic;\n        src: url(\"" + url('MontserratAlternates-ThinItalic.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('MontserratAlternates-ThinItalic.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Alternates ExtraLight **/\n    @font-face {\n        font-family: \"Montserrat Alternates\";\n        font-weight: 200;\n        font-style: normal;\n        src: url(\"" + url('MontserratAlternates-ExtraLight.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('MontserratAlternates-ExtraLight.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Alternates ExtraLight-Italic **/\n    @font-face {\n        font-family: \"Montserrat Alternates\";\n        font-weight: 200;\n        font-style: italic;\n        src: url(\"" + url('MontserratAlternates-ExtraLightItalic.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('MontserratAlternates-ExtraLightItalic.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Alternates Light **/\n    @font-face {\n        font-family: \"Montserrat Alternates\";\n        font-weight: 300;\n        font-style: normal;\n        src: url(\"" + url('MontserratAlternates-Light.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('MontserratAlternates-Light.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Alternates Light-Italic **/\n    @font-face {\n        font-family: \"Montserrat Alternates\";\n        font-weight: 300;\n        font-style: italic;\n        src: url(\"" + url('MontserratAlternates-LightItalic.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('MontserratAlternates-LightItalic.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Alternates Regular **/\n    @font-face {\n        font-family: \"Montserrat Alternates\";\n        font-weight: 400;\n        font-style: normal;\n        src: url(\"" + url('MontserratAlternates-Regular.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('MontserratAlternates-Regular.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Alternates Regular-Italic **/\n    @font-face {\n        font-family: \"Montserrat Alternates\";\n        font-weight: 400;\n        font-style: italic;\n        src: url(\"" + url('MontserratAlternates-Italic.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('MontserratAlternates-Italic.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Alternates Medium **/\n    @font-face {\n        font-family: \"Montserrat Alternates\";\n        font-weight: 500;\n        font-style: normal;\n        src: url(\"" + url('MontserratAlternates-Medium.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('MontserratAlternates-Medium.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Alternates Medium-Italic **/\n    @font-face {\n        font-family: \"Montserrat Alternates\";\n        font-weight: 500;\n        font-style: italic;\n        src: url(\"" + url('MontserratAlternates-MediumItalic.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('MontserratAlternates-MediumItalic.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Alternates SemiBold **/\n    @font-face {\n        font-family: \"Montserrat Alternates\";\n        font-weight: 600;\n        font-style: normal;\n        src: url(\"" + url('MontserratAlternates-SemiBold.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('MontserratAlternates-SemiBold.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Alternates SemiBold-Italic **/\n    @font-face {\n        font-family: \"Montserrat Alternates\";\n        font-weight: 600;\n        font-style: italic;\n        src: url(\"" + url('MontserratAlternates-SemiBoldItalic.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('MontserratAlternates-SemiBoldItalic.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Alternates Bold **/\n    @font-face {\n        font-family: \"Montserrat Alternates\";\n        font-weight: 700;\n        font-style: normal;\n        src: url(\"" + url('MontserratAlternates-Bold.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('MontserratAlternates-Bold.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Alternates Bold-Italic **/\n    @font-face {\n        font-family: \"Montserrat Alternates\";\n        font-weight: 700;\n        font-style: italic;\n        src: url(\"" + url('MontserratAlternates-BoldItalic.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('MontserratAlternates-BoldItalic.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Alternates ExtraBold **/\n    @font-face {\n        font-family: \"Montserrat Alternates\";\n        font-weight: 800;\n        font-style: normal;\n        src: url(\"" + url('MontserratAlternates-ExtraBold.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('MontserratAlternates-ExtraBold.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Alternates ExtraBold-Italic **/\n    @font-face {\n        font-family: \"Montserrat Alternates\";\n        font-weight: 800;\n        font-style: italic;\n        src: url(\"" + url('MontserratAlternates-ExtraBoldItalic.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('MontserratAlternates-ExtraBoldItalic.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Alternates Black **/\n    @font-face {\n        font-family: \"Montserrat Alternates\";\n        font-weight: 900;\n        font-style: normal;\n        src: url(\"" + url('MontserratAlternates-Black.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('MontserratAlternates-Black.woff') + "\") format(\"woff\");\n    }\n    \n    /** Montserrat Alternates Black-Italic **/\n    @font-face {\n        font-family: \"Montserrat\";\n        font-weight: 900;\n        font-style: italic;\n        src: url(\"" + url('MontserratAlternates-BlackItalic.woff2') + "\") format(\"woff2\"),\n             url(\"" + url('MontserratAlternates-BlackItalic.woff') + "\") format(\"woff\");\n    }";
+    return `
+    @font-face {
+        font-family: "Montserrat";
+        font-weight: 100;
+        font-style: normal;
+        src: url("${url('Montserrat-Thin.woff2')}") format("woff2"),
+             url("${url('Montserrat-Thin.woff')}") format("woff");
+    }
+    
+    /** Montserrat Thin-Italic **/
+    @font-face {
+        font-family: "Montserrat";
+        font-weight: 100;
+        font-style: italic;
+        src: url("${url('Montserrat-ThinItalic.woff2')}") format("woff2"),
+             url("${url('Montserrat-ThinItalic.woff')}") format("woff");
+    }
+    
+    /** Montserrat ExtraLight **/
+    @font-face {
+        font-family: "Montserrat";
+        font-weight: 200;
+        font-style: normal;
+        src: url("${url('Montserrat-ExtraLight.woff2')}") format("woff2"),
+             url("${url('Montserrat-ExtraLight.woff')}") format("woff");
+    }
+    
+    /** Montserrat ExtraLight-Italic **/
+    @font-face {
+        font-family: "Montserrat";
+        font-weight: 200;
+        font-style: italic;
+        src: url("${url('Montserrat-ExtraLightItalic.woff2')}") format("woff2"),
+             url("${url('Montserrat-ExtraLightItalic.woff')}") format("woff");
+    }
+    
+    /** Montserrat Light **/
+    @font-face {
+        font-family: "Montserrat";
+        font-weight: 300;
+        font-style: normal;
+        src: url("${url('Montserrat-Light.woff2')}") format("woff2"),
+             url("${url('Montserrat-Light.woff')}") format("woff");
+    }
+    
+    /** Montserrat Light-Italic **/
+    @font-face {
+        font-family: "Montserrat";
+        font-weight: 300;
+        font-style: italic;
+        src: url("${url('Montserrat-LightItalic.woff2')}") format("woff2"),
+             url("${url('Montserrat-LightItalic.woff')}") format("woff");
+    }
+    
+    /** Montserrat Regular **/
+    @font-face {
+        font-family: "Montserrat";
+        font-weight: 400;
+        font-style: normal;
+        src: url("${url('Montserrat-Regular.woff2')}") format("woff2"),
+             url("${url('Montserrat-Regular.woff')}") format("woff");
+    }
+    
+    /** Montserrat Regular-Italic **/
+    @font-face {
+        font-family: "Montserrat";
+        font-weight: 400;
+        font-style: italic;
+        src: url("${url('Montserrat-Italic.woff2')}") format("woff2"),
+             url("${url('Montserrat-Italic.woff')}") format("woff");
+    }
+    
+    /** Montserrat Medium **/
+    @font-face {
+        font-family: "Montserrat";
+        font-weight: 500;
+        font-style: normal;
+        src: url("${url('Montserrat-Medium.woff2')}") format("woff2"),
+             url("${url('Montserrat-Medium.woff')}") format("woff");
+    }
+    
+    /** Montserrat Medium-Italic **/
+    @font-face {
+        font-family: "Montserrat";
+        font-weight: 500;
+        font-style: italic;
+        src: url("${url('Montserrat-MediumItalic.woff2')}") format("woff2"),
+             url("${url('Montserrat-MediumItalic.woff')}") format("woff");
+    }
+    
+    /** Montserrat SemiBold **/
+    @font-face {
+        font-family: "Montserrat";
+        font-weight: 600;
+        font-style: normal;
+        src: url("${url('Montserrat-SemiBold.woff2')}") format("woff2"),
+             url("${url('Montserrat-SemiBold.woff')}") format("woff");
+    }
+    
+    /** Montserrat SemiBold-Italic **/
+    @font-face {
+        font-family: "Montserrat";
+        font-weight: 600;
+        font-style: italic;
+        src: url("${url('Montserrat-SemiBoldItalic.woff2')}") format("woff2"),
+             url("${url('Montserrat-SemiBoldItalic.woff')}") format("woff");
+    }
+    
+    /** Montserrat Bold **/
+    @font-face {
+        font-family: "Montserrat";
+        font-weight: 700;
+        font-style: normal;
+        src: url("${url('Montserrat-Bold.woff2')}") format("woff2"),
+             url("${url('Montserrat-Bold.woff')}") format("woff");
+    }
+    
+    /** Montserrat Bold-Italic **/
+    @font-face {
+        font-family: "Montserrat";
+        font-weight: 700;
+        font-style: italic;
+        src: url("${url('Montserrat-BoldItalic.woff2')}") format("woff2"),
+             url("${url('Montserrat-BoldItalic.woff')}") format("woff");
+    }
+    
+    /** Montserrat ExtraBold **/
+    @font-face {
+        font-family: "Montserrat";
+        font-weight: 800;
+        font-style: normal;
+        src: url("${url('Montserrat-ExtraBold.woff2')}") format("woff2"),
+             url("${url('Montserrat-ExtraBold.woff')}") format("woff");
+    }
+    
+    /** Montserrat ExtraBold-Italic **/
+    @font-face {
+        font-family: "Montserrat";
+        font-weight: 800;
+        font-style: italic;
+        src: url("${url('Montserrat-ExtraBoldItalic.woff2')}") format("woff2"),
+             url("${url('Montserrat-ExtraBoldItalic.woff')}") format("woff");
+    }
+    
+    /** Montserrat Black **/
+    @font-face {
+        font-family: "Montserrat";
+        font-weight: 900;
+        font-style: normal;
+        src: url("${url('Montserrat-Black.woff2')}") format("woff2"),
+             url("${url('Montserrat-Black.woff')}") format("woff");
+    }
+    
+    /** Montserrat Black-Italic **/
+    @font-face {
+        font-family: "Montserrat";
+        font-weight: 900;
+        font-style: italic;
+        src: url("${url('Montserrat-BlackItalic.woff2')}") format("woff2"),
+             url("${url('Montserrat-BlackItalic.woff')}") format("woff");
+    }
+    
+    /** =================== MONTSERRAT ALTERNATES =================== **/
+    
+    /** Montserrat Alternates Thin **/
+    @font-face {
+        font-family: "Montserrat Alternates";
+        font-weight: 100;
+        font-style: normal;
+        src: url("${url('MontserratAlternates-Thin.woff2')}") format("woff2"),
+             url("${url('MontserratAlternates-Thin.woff')}") format("woff");
+    }
+    
+    /** Montserrat Alternates Thin-Italic **/
+    @font-face {
+        font-family: "Montserrat Alternates";
+        font-weight: 100;
+        font-style: italic;
+        src: url("${url('MontserratAlternates-ThinItalic.woff2')}") format("woff2"),
+             url("${url('MontserratAlternates-ThinItalic.woff')}") format("woff");
+    }
+    
+    /** Montserrat Alternates ExtraLight **/
+    @font-face {
+        font-family: "Montserrat Alternates";
+        font-weight: 200;
+        font-style: normal;
+        src: url("${url('MontserratAlternates-ExtraLight.woff2')}") format("woff2"),
+             url("${url('MontserratAlternates-ExtraLight.woff')}") format("woff");
+    }
+    
+    /** Montserrat Alternates ExtraLight-Italic **/
+    @font-face {
+        font-family: "Montserrat Alternates";
+        font-weight: 200;
+        font-style: italic;
+        src: url("${url('MontserratAlternates-ExtraLightItalic.woff2')}") format("woff2"),
+             url("${url('MontserratAlternates-ExtraLightItalic.woff')}") format("woff");
+    }
+    
+    /** Montserrat Alternates Light **/
+    @font-face {
+        font-family: "Montserrat Alternates";
+        font-weight: 300;
+        font-style: normal;
+        src: url("${url('MontserratAlternates-Light.woff2')}") format("woff2"),
+             url("${url('MontserratAlternates-Light.woff')}") format("woff");
+    }
+    
+    /** Montserrat Alternates Light-Italic **/
+    @font-face {
+        font-family: "Montserrat Alternates";
+        font-weight: 300;
+        font-style: italic;
+        src: url("${url('MontserratAlternates-LightItalic.woff2')}") format("woff2"),
+             url("${url('MontserratAlternates-LightItalic.woff')}") format("woff");
+    }
+    
+    /** Montserrat Alternates Regular **/
+    @font-face {
+        font-family: "Montserrat Alternates";
+        font-weight: 400;
+        font-style: normal;
+        src: url("${url('MontserratAlternates-Regular.woff2')}") format("woff2"),
+             url("${url('MontserratAlternates-Regular.woff')}") format("woff");
+    }
+    
+    /** Montserrat Alternates Regular-Italic **/
+    @font-face {
+        font-family: "Montserrat Alternates";
+        font-weight: 400;
+        font-style: italic;
+        src: url("${url('MontserratAlternates-Italic.woff2')}") format("woff2"),
+             url("${url('MontserratAlternates-Italic.woff')}") format("woff");
+    }
+    
+    /** Montserrat Alternates Medium **/
+    @font-face {
+        font-family: "Montserrat Alternates";
+        font-weight: 500;
+        font-style: normal;
+        src: url("${url('MontserratAlternates-Medium.woff2')}") format("woff2"),
+             url("${url('MontserratAlternates-Medium.woff')}") format("woff");
+    }
+    
+    /** Montserrat Alternates Medium-Italic **/
+    @font-face {
+        font-family: "Montserrat Alternates";
+        font-weight: 500;
+        font-style: italic;
+        src: url("${url('MontserratAlternates-MediumItalic.woff2')}") format("woff2"),
+             url("${url('MontserratAlternates-MediumItalic.woff')}") format("woff");
+    }
+    
+    /** Montserrat Alternates SemiBold **/
+    @font-face {
+        font-family: "Montserrat Alternates";
+        font-weight: 600;
+        font-style: normal;
+        src: url("${url('MontserratAlternates-SemiBold.woff2')}") format("woff2"),
+             url("${url('MontserratAlternates-SemiBold.woff')}") format("woff");
+    }
+    
+    /** Montserrat Alternates SemiBold-Italic **/
+    @font-face {
+        font-family: "Montserrat Alternates";
+        font-weight: 600;
+        font-style: italic;
+        src: url("${url('MontserratAlternates-SemiBoldItalic.woff2')}") format("woff2"),
+             url("${url('MontserratAlternates-SemiBoldItalic.woff')}") format("woff");
+    }
+    
+    /** Montserrat Alternates Bold **/
+    @font-face {
+        font-family: "Montserrat Alternates";
+        font-weight: 700;
+        font-style: normal;
+        src: url("${url('MontserratAlternates-Bold.woff2')}") format("woff2"),
+             url("${url('MontserratAlternates-Bold.woff')}") format("woff");
+    }
+    
+    /** Montserrat Alternates Bold-Italic **/
+    @font-face {
+        font-family: "Montserrat Alternates";
+        font-weight: 700;
+        font-style: italic;
+        src: url("${url('MontserratAlternates-BoldItalic.woff2')}") format("woff2"),
+             url("${url('MontserratAlternates-BoldItalic.woff')}") format("woff");
+    }
+    
+    /** Montserrat Alternates ExtraBold **/
+    @font-face {
+        font-family: "Montserrat Alternates";
+        font-weight: 800;
+        font-style: normal;
+        src: url("${url('MontserratAlternates-ExtraBold.woff2')}") format("woff2"),
+             url("${url('MontserratAlternates-ExtraBold.woff')}") format("woff");
+    }
+    
+    /** Montserrat Alternates ExtraBold-Italic **/
+    @font-face {
+        font-family: "Montserrat Alternates";
+        font-weight: 800;
+        font-style: italic;
+        src: url("${url('MontserratAlternates-ExtraBoldItalic.woff2')}") format("woff2"),
+             url("${url('MontserratAlternates-ExtraBoldItalic.woff')}") format("woff");
+    }
+    
+    /** Montserrat Alternates Black **/
+    @font-face {
+        font-family: "Montserrat Alternates";
+        font-weight: 900;
+        font-style: normal;
+        src: url("${url('MontserratAlternates-Black.woff2')}") format("woff2"),
+             url("${url('MontserratAlternates-Black.woff')}") format("woff");
+    }
+    
+    /** Montserrat Alternates Black-Italic **/
+    @font-face {
+        font-family: "Montserrat";
+        font-weight: 900;
+        font-style: italic;
+        src: url("${url('MontserratAlternates-BlackItalic.woff2')}") format("woff2"),
+             url("${url('MontserratAlternates-BlackItalic.woff')}") format("woff");
+    }`;
 }
 exports.get_fonts = get_fonts;
 ;
 
-},{"webextension-polyfill-ts":1}],12:[function(require,module,exports){
+},{"webextension-polyfill-ts":1}],13:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ShadowDomDiv = void 0;
-var ShadowDomDiv = /** @class */ (function () {
+exports.ElementObserver = void 0;
+const rect_1 = require("../../common/rect");
+const bindings_1 = require("../bindings");
+const shadow_dom_1 = require("../shadow-dom");
+class StyleCalculator {
+    constructor(document, element) {
+        this.shadow_dom = new shadow_dom_1.ShadowDom(document, document.body.firstElementChild);
+        this.shadow_dom.root_div.style.display = 'none';
+        const element_base = document.createElement(element.tagName);
+        this.shadow_dom.shadow.appendChild(element_base);
+        this.default_style = window.getComputedStyle(element_base);
+        this.comp_style = window.getComputedStyle(element);
+    }
+    filter_defaults() {
+        let results = new Map();
+        for (let key of this.comp_style) {
+            const comped_val = this.comp_style.getPropertyValue(key);
+            if (this.default_style.getPropertyValue(key) !== comped_val)
+                results.set(key, comped_val);
+        }
+        return results;
+    }
+    delete() {
+        this.shadow_dom.delete();
+    }
+}
+;
+class ElementObserver {
+    constructor(document, input_element, polling_interval, // for uncaught changes
+    on_rect_changed, on_style_changed) {
+        this.bindings = new bindings_1.Bindings();
+        this.active = true;
+        let last_rect = new rect_1.Rect();
+        const update_rect = (left, top, width, height, scroll_width = input_element.scrollWidth, scroll_height = input_element.scrollHeight, scroll_x = window.scrollX, scroll_y = window.scrollY) => {
+            if (left != last_rect.left ||
+                top != last_rect.top ||
+                width != last_rect.width ||
+                height != last_rect.height ||
+                scroll_width != last_rect.scroll_width ||
+                scroll_height != last_rect.scroll_height ||
+                scroll_x != last_rect.absolute_offs_x ||
+                scroll_y != last_rect.absolute_offs_y) {
+                const new_rect = new rect_1.Rect(left, top, width, height, scroll_width, scroll_height, scroll_x, scroll_y);
+                on_rect_changed(new_rect);
+                last_rect = new_rect;
+            }
+        };
+        const update_rect_from_bounding_client = () => {
+            const bounding_rect = input_element.getBoundingClientRect();
+            update_rect(bounding_rect.left, bounding_rect.top, bounding_rect.width, bounding_rect.height);
+        };
+        // intersection observer
+        const intersect_observer = new IntersectionObserver((entries, observer) => {
+            const bounding_rect = entries[0].boundingClientRect;
+            update_rect(bounding_rect.left, bounding_rect.top, bounding_rect.width, bounding_rect.height);
+        }, {
+            root: document.querySelector('#scrollArea'),
+            rootMargin: '0px',
+            threshold: (() => {
+                let arr = new Array();
+                const n_steps = 100;
+                // TODO: generate this somewhere and keep it around
+                for (let i = 0; i < n_steps + 1; ++i)
+                    arr.push(i / n_steps);
+                return arr;
+            })()
+        });
+        intersect_observer.observe(input_element);
+        this.bindings.add_unbinding(() => { intersect_observer.disconnect(); });
+        // watch for element resize
+        const resize_observer = new ResizeObserver((entries, observer) => {
+            update_rect_from_bounding_client();
+        });
+        resize_observer.observe(input_element);
+        this.bindings.add_unbinding(() => { resize_observer.disconnect(); });
+        this.style_calculator = new StyleCalculator(document, input_element);
+        // watch for style change
+        const resize_attrs = ['width', 'height', 'inline-size', 'block-size'];
+        let old_css = new Map();
+        for (let [key, value] of this.style_calculator.filter_defaults()) {
+            if (resize_attrs.indexOf(key) == -1) {
+                old_css.set(key, value);
+            }
+        }
+        const style_observer = new MutationObserver((mutations, observer) => {
+            let new_values = new Map();
+            for (let [key, value] of this.style_calculator.filter_defaults()) {
+                if (resize_attrs.indexOf(key) == -1) {
+                    if (!old_css.has(key) || value != old_css.get(key)) {
+                        new_values.set(key, value);
+                        old_css.set(key, value);
+                    }
+                }
+            }
+            if (new_values.keys.length > 0) {
+                on_style_changed(new_values, old_css);
+                update_rect_from_bounding_client();
+            }
+        });
+        style_observer.observe(input_element, { attributes: true, attributeFilter: ['style', 'class'] });
+        this.bindings.add_unbinding(() => { style_observer.disconnect(); });
+        // watch for window resize
+        const win_resize_observer = new ResizeObserver((entries, observer) => {
+            update_rect_from_bounding_client();
+        });
+        win_resize_observer.observe(window.document.body);
+        this.bindings.add_unbinding(() => { win_resize_observer.disconnect(); });
+        // polling for uncaught changes
+        const rect_polling_update = () => {
+            if (this.active) {
+                update_rect_from_bounding_client();
+                // TODO: style?
+                setTimeout(rect_polling_update, polling_interval);
+            }
+        };
+        rect_polling_update();
+        // push initial changes
+        on_style_changed(old_css, old_css);
+    }
+    delete() {
+        this.active = false;
+        this.style_calculator.delete();
+        this.bindings.delete();
+    }
+}
+exports.ElementObserver = ElementObserver;
+;
+
+},{"../../common/rect":6,"../bindings":8,"../shadow-dom":15}],14:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.PIIFilterInputExtender = exports.TextAreaInputInterface = exports.copy_event = exports.AbstractInputInterface = void 0;
+const shadow_dom_1 = require("../shadow-dom");
+const bindings_1 = require("../bindings");
+const element_observer_1 = require("./element_observer");
+;
+class AbstractInputInterface extends shadow_dom_1.ShadowDomDiv {
+    // add range display stuff here as well
+    constructor(settings) {
+        super(settings.document);
+        this.settings = settings;
+        this.bindings = new bindings_1.Bindings();
+        this.div.style.position = 'absolute';
+    }
+    init() {
+        this.element_observer = new element_observer_1.ElementObserver(document, this.settings.element, this.settings.polling_interval, (rect) => { this.on_rect_changed(rect); }, (changes, all) => { this.on_style_changed(changes, all); });
+    }
+    delete() {
+        this.bindings.delete();
+        this.element_observer.delete();
+        super.delete();
+    }
+}
+exports.AbstractInputInterface = AbstractInputInterface;
+;
+function copy_event(event, new_target) {
+    let event_dict = {};
+    for (let key in event)
+        Reflect.set(event_dict, key, Reflect.get(event, key));
+    if (new_target != null && Reflect.has(event, 'target'))
+        Reflect.set(event_dict, 'target', new_target);
+    return new Event(event.type, event_dict);
+}
+exports.copy_event = copy_event;
+class TextAreaInputInterface extends AbstractInputInterface {
+    constructor(settings) {
+        super(settings);
+        this.overlay_str = '';
+        this.input_overlay = settings.document.createElement('div');
+        this.div.appendChild(this.input_overlay);
+        // const style: HTMLStyleElement = settings.document.createElement('style');
+        // style.innerText = `
+        //     .input_overlay {
+        //         overflow-y: scroll;
+        //         scrollbar-width: none;
+        //         -ms-overflow-style: none;
+        //     }
+        //     .input_overlay::-webkit-scrollbar { 
+        //         display: none;  /* Safari and Chrome */
+        //     }
+        // `;
+        // this.div.appendChild(style);
+        // TODO: sync selection start and end
+        const text_area_element = this.settings.element;
+        // watch outside changes
+        const element_input_callback = (event) => {
+            const new_text = text_area_element.value;
+            if (new_text != this.overlay_str) {
+                this.input_overlay.textContent = new_text + '\0';
+                if (this.settings.on_input_changed != null)
+                    this.settings.on_input_changed(new_text);
+            }
+        };
+        // bind check if form or javascript changes textarea contents
+        for (let event_name of ['input', 'change'])
+            this.bindings.bind_event(this.settings.element, event_name, element_input_callback);
+        // TODO: need to watch input of input as well? for form directed changes -> sync if not the same?
+        // so forward some events from the input to the div as well, while making sure not to set value if it is the same
+        // mutation observer as well?
+        const sync_contents = () => {
+            this.overlay_str = this.input_overlay.innerHTML.replace(/(\<\/div\>)|(^\<div\>)|(\\0)/g, '')
+                .replace(/(\<div\>\<\/?br\>)|(\<div\>|<\/?br\>)/g, '\n')
+                .replace(/&amp;/g, '&')
+                .replace(/&gt;/g, '>')
+                .replace(/&lt;/g, '<');
+            text_area_element.value = this.overlay_str;
+        };
+        const forward_event = (event) => {
+            const copied_event = copy_event(event, this.settings.element);
+            this.settings.element.dispatchEvent(copied_event);
+        };
+        // follow text changes
+        for (let event_name of ['input', 'change']) {
+            this.bindings.bind_event(this.input_overlay, event_name, (event) => {
+                sync_contents();
+                forward_event(event);
+                if (this.settings.on_input_changed != null)
+                    this.settings.on_input_changed(this.overlay_str);
+            });
+        }
+        // // keyup
+        // this.bindings.bind_event(this.input_overlay, 'keydown', (event: Event) => {
+        //     if ((event as KeyboardEvent).code == 'Tab')
+        //         event.preventDefault();
+        // });
+        // events which should sync the contents before forwarding the event
+        for (let event_name of [
+            'focus', 'submit', 'cut', 'copy', 'paste', 'keydown', 'keyup', 'contextmenu', 'select', 'selectstart',
+            'selectionchange'
+        ])
+            this.bindings.bind_event(this.input_overlay, event_name, (event) => {
+                sync_contents();
+                forward_event(event);
+            });
+        // forward a list of events (mouse click events are not forwarded since coords could be wrong)
+        for (let event_name of [
+            'reset', 'mouseenter', 'mouseleave', 'mouseover', 'mouseout', 'drag', 'dragend', 'dragenter', 'dragstart',
+            'dragleave', 'dragover', 'drop', 'storage', 'message', 'open', 'orientationchange', 'deviceorientation',
+            'devicemotion', 'pointerover', 'pointerenter', 'pointerout', 'pointerleave', 'show', 'success'
+        ]) {
+            this.bindings.bind_event(this.input_overlay, event_name, (event) => {
+                const copied_event = copy_event(event, this.settings.element);
+                this.settings.element.dispatchEvent(copied_event);
+            });
+        }
+        // TODO: selection and unselect?
+        this.bindings.bind_event(this.input_overlay, 'scroll', (event) => {
+            this.settings.element.scrollTop = this.input_overlay.scrollTop;
+            this.settings.element.scrollLeft = this.input_overlay.scrollLeft;
+            const copied_event = copy_event(event, this.settings.element);
+            this.settings.element.dispatchEvent(copied_event);
+        });
+        this.bindings.bind_event(this.input_overlay, 'blur', (event) => {
+            if (this.settings.on_blur != null)
+                this.settings.on_blur(event);
+            const copied_event = copy_event(event, this.settings.element);
+            this.settings.element.dispatchEvent(copied_event);
+        });
+        this.overlay_observer = new element_observer_1.ElementObserver(document, this.input_overlay, this.settings.polling_interval, (rect) => {
+            // rect.apply_to_style(this.settings.element.style, false, false);
+        }, (changes) => { });
+        // keep at end
+        super.init();
+        // sync initial contents
+        this.input_overlay.textContent = text_area_element.value + '\0';
+        this.input_overlay.contentEditable = 'true';
+        this.input_overlay.focus();
+        // sync caret
+        if (text_area_element.value.length > 0) {
+            const range = document.createRange();
+            range.setStart(this.input_overlay.childNodes[0], text_area_element.selectionStart);
+            range.setEnd(this.input_overlay.childNodes[0], text_area_element.selectionEnd);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }
+        this.input_overlay.scrollTop = this.settings.element.scrollTop;
+        this.input_overlay.scrollLeft = this.settings.element.scrollLeft;
+        // hide input element
+        this.el_old_transition = this.settings.element.style.transition;
+        this.settings.element.style.transition = 'none';
+        this.settings.element.style.visibility = 'hidden';
+    }
+    ;
+    delete() {
+        this.overlay_observer.delete();
+        super.delete();
+        // show input element
+        this.settings.element.style.visibility = 'visible';
+        this.settings.element.style.transition = this.el_old_transition;
+    }
+    on_rect_changed(rect) {
+        rect.apply_position_to_element(this.div, true);
+        rect.apply_width_and_height_to_element(this.input_overlay);
+        // TODO resizing
+    }
+    on_style_changed(changes, all) {
+        for (let [key, value] of changes) {
+            if ([
+                // 'border',
+                // 'border-top',
+                // 'border-bottom',
+                // 'border-left',
+                // 'border-right',
+                'margin',
+                'margin-top',
+                'margin-bottom',
+                'margin-left',
+                'margin-right',
+                'margin-block-start',
+                'margin-block-end',
+                'margin-inline-start',
+                'margin-inline-end',
+                'user-modify',
+                '-webkit-user-modify',
+                'visibility',
+                'perspective-origin',
+                'transform-origin'
+            ].indexOf(key) == -1)
+                Reflect.set(this.input_overlay.style, key, value);
+            // console.log(key, value);
+        }
+        // overrides
+        this.input_overlay.style.position = 'relative';
+        this.input_overlay.style.boxSizing = 'border-box';
+        this.input_overlay.style.display = 'block';
+        this.input_overlay.style.margin = '0px';
+        this.input_overlay.style.zIndex = '99999';
+        this.input_overlay.style.transition = 'none';
+        this.input_overlay.style.animation = 'none';
+        // set defaults
+        for (let key of ['overflow-x', 'overflow-y'])
+            if (!all.has(key))
+                this.input_overlay.style.setProperty(key, 'auto');
+        if (!all.has('white-space'))
+            this.input_overlay.style.whiteSpace = 'pre-wrap';
+        if (!all.has('word-wrap'))
+            this.input_overlay.style.wordWrap = 'break-word';
+        if (!all.has('resize'))
+            this.input_overlay.style.resize = 'both';
+        if (!all.has('line-height'))
+            this.input_overlay.style.lineHeight = 'normal';
+        this.input_overlay.style.cssText += 'appearance: textarea;';
+    }
+    contains(element) {
+        return (element == this.input_overlay);
+    }
+}
+exports.TextAreaInputInterface = TextAreaInputInterface;
+;
+class PIIFilterInputExtender {
+    constructor(main_document) {
+        this.bindings = new bindings_1.Bindings();
+        // catch focus
+        this.bindings.bind_event(document, 'focusin', (event) => {
+            const target_element = event.target;
+            // TODO: keep old interface if it is of same type
+            const on_blur = (event) => {
+                // todo other stuff (check if this is because of other overlay)
+                this.delete_interface();
+            };
+            // delete old interface
+            if (this.input_interface != null)
+                this.input_interface.delete();
+            const settings = {
+                document: document,
+                element: target_element,
+                polling_interval: 5000,
+                on_blur: on_blur
+            };
+            const add_interface = () => {
+                target_element.removeEventListener('mouseup', add_interface);
+                target_element.removeEventListener('keyup', add_interface);
+                // ignore if target is part of input interface
+                if (this.input_interface != null && this.input_interface.contains(target_element))
+                    return;
+                if (target_element.nodeName == 'INPUT')
+                    return; // TODO
+                else if (target_element.nodeName == 'TEXTAREA')
+                    this.input_interface = new TextAreaInputInterface(settings);
+                else if (target_element.isContentEditable)
+                    return;
+                else
+                    return;
+                console.log('bound');
+            };
+            target_element.addEventListener('mouseup', add_interface);
+            target_element.addEventListener('keyup', add_interface);
+        });
+        // catch input / clicking / polling
+    }
+    delete_interface() {
+        if (this.input_interface != null) {
+            console.log('released');
+            this.input_interface.delete();
+            this.input_interface = null;
+        }
+    }
+    delete() {
+        this.bindings.delete();
+    }
+}
+exports.PIIFilterInputExtender = PIIFilterInputExtender;
+;
+// TODO: - resize forwarding 
+// hide / show other element on create / destroy
+// resizing could affect other element only after release?
+// todo: also have scroll work other way around
+// todo: only have resize observer on overlay for size forwarding?
+// TODO: watch for uncaught css changes
+// TODO: eventually redo firefox support so that ctr/cmd keycomb work.
+
+},{"../bindings":8,"../shadow-dom":15,"./element_observer":13}],15:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ShadowDomDiv = exports.ShadowDom = void 0;
+class ShadowDom {
     /**
     * creates a shadow div and adds it to the front of the document
     * @param document the document
     */
-    function ShadowDomDiv(document) {
+    constructor(document, insert_at = document.body.children[0], // TODO: what if this is empty?
+    insert_after = false) {
         this.document = document;
         this.root_div = this.document.createElement("div");
         this.shadow = this.root_div.attachShadow({ mode: 'open' });
-        this.div = this.document.createElement("div");
-        this.shadow.appendChild(this.div);
-        document.body.insertBefore(this.root_div, this.document.body.childNodes[0]);
+        if (insert_after)
+            insert_at.insertAdjacentElement('afterend', this.root_div);
+        else
+            insert_at.insertAdjacentElement('beforebegin', this.root_div);
     }
-    Object.defineProperty(ShadowDomDiv.prototype, "visibility", {
-        /**
-         * set the visibility
-         */
-        set: function (visible) {
-            this.div.style.visibility = visible ? 'visible' : 'hidden';
-        },
-        enumerable: false,
-        configurable: true
-    });
     /**
      * removes previous DOM modifications and returns null
      */
-    ShadowDomDiv.prototype.delete = function () {
+    delete() {
         this.root_div.remove();
-    };
-    return ShadowDomDiv;
-}());
+    }
+}
+exports.ShadowDom = ShadowDom;
+;
+class ShadowDomDiv extends ShadowDom {
+    /**
+    * creates a shadow div and adds it to the front of the document
+    * @param document the document
+    */
+    constructor(document, insert_at = document.body.children[0], // TODO: what if this is empty?
+    insert_after = false) {
+        super(document, insert_at, insert_after);
+        this.document = document;
+        this.div = this.document.createElement("div");
+        this.shadow.appendChild(this.div);
+    }
+    /**
+     * set the visibility
+     */
+    set visibility(visible) {
+        this.div.style.visibility = visible ? 'visible' : 'hidden';
+    }
+    /**
+     * removes previous DOM modifications and returns null
+     */
+    delete() {
+        this.root_div.remove();
+        super.delete();
+    }
+}
 exports.ShadowDomDiv = ShadowDomDiv;
 ;
 
-},{}],13:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Utils = void 0;
-var rect_1 = require("../common/rect");
-var margin_1 = require("../common/margin");
+const rect_1 = require("../common/rect");
+const margin_1 = require("../common/margin");
 var Utils;
 (function (Utils) {
-    var DOM;
+    let DOM;
     (function (DOM) {
         /**
          * Returns true if a HTMLElement supports text entry
@@ -1992,8 +2977,8 @@ var Utils;
          * @param element the element to get absolute coordinates of
          */
         function absolute_rect(element) {
-            var rect = new rect_1.Rect(0, 0, 0, 0);
-            var bounding_rect = element.getBoundingClientRect();
+            let rect = new rect_1.Rect(0, 0, 0, 0);
+            let bounding_rect = element.getBoundingClientRect();
             rect.left = bounding_rect.left;
             rect.top = bounding_rect.top;
             rect.width = bounding_rect.width;
@@ -2003,38 +2988,35 @@ var Utils;
         DOM.absolute_rect = absolute_rect;
         ;
         // TODO: get_text_input_value? (for distinguishing from element.isContentEditable)
-        var StylingMargins = /** @class */ (function () {
-            function StylingMargins() {
-            }
+        class StylingMargins {
             /**
              * calculate all space styling takes up until enclosing element
              */
-            StylingMargins.calculate_all = function (element) {
+            static calculate_all(element) {
                 // document.body.appendChild(StylingMargins.parent_div);
-                var computed_style = window.getComputedStyle(element);
+                let computed_style = window.getComputedStyle(element);
                 this.outer_div.style.border = computed_style.border;
                 this.outer_div.style.padding = computed_style.padding;
                 this.outer_div.style.margin = computed_style.margin;
-                var inner_rect = this.inner_div.getBoundingClientRect();
-                var outer_rect = this.outer_div.getBoundingClientRect();
-                var bounds = new margin_1.Margin(inner_rect.left - outer_rect.left, inner_rect.top - outer_rect.top, inner_rect.right - outer_rect.right, inner_rect.bottom - outer_rect.bottom);
+                let inner_rect = this.inner_div.getBoundingClientRect();
+                let outer_rect = this.outer_div.getBoundingClientRect();
+                let bounds = new margin_1.Margin(inner_rect.left - outer_rect.left, inner_rect.top - outer_rect.top, inner_rect.right - outer_rect.right, inner_rect.bottom - outer_rect.bottom);
                 // document.body.removeChild(StylingMargins.parent_div);
                 return bounds;
-            };
-            /**
-             * initializes the calc objects
-             */
-            StylingMargins._initialize = (function () {
-                StylingMargins.parent_div = document.createElement("div");
-                StylingMargins.shadow_root = StylingMargins.parent_div.attachShadow({ mode: 'closed' });
-                StylingMargins.outer_div = document.createElement("div");
-                StylingMargins.inner_div = document.createElement("div");
-                StylingMargins.shadow_root.appendChild(StylingMargins.outer_div);
-                StylingMargins.outer_div.appendChild(StylingMargins.inner_div);
-                return true;
-            })();
-            return StylingMargins;
-        }());
+            }
+        }
+        /**
+         * initializes the calc objects
+         */
+        StylingMargins._initialize = (() => {
+            StylingMargins.parent_div = document.createElement("div");
+            StylingMargins.shadow_root = StylingMargins.parent_div.attachShadow({ mode: 'closed' });
+            StylingMargins.outer_div = document.createElement("div");
+            StylingMargins.inner_div = document.createElement("div");
+            StylingMargins.shadow_root.appendChild(StylingMargins.outer_div);
+            StylingMargins.outer_div.appendChild(StylingMargins.inner_div);
+            return true;
+        })();
         DOM.StylingMargins = StylingMargins;
         ;
     })(DOM = Utils.DOM || (Utils.DOM = {}));

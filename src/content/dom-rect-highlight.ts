@@ -1,5 +1,5 @@
 import { Rect } from '../common/rect';
-import { ShadowDomDiv } from './shadow-dom-div';
+import { ShadowDomDiv } from './shadow-dom';
 /**
  * Provides an overlay / highlight around a DOM element
  */

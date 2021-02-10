@@ -4,6 +4,9 @@ import { DOMElementInfoOverlay } from './content/dom-element-info-overlay';
 import { ICommonMessage } from './common/common-messages';
 import { DOMFocusManager } from './content/dom-focus-manager';
 import { Utils } from './content/utils';
+import { PIIFilterInputExtender } from './content/html-input-mirror/input-extender';
+
+const input_extender: PIIFilterInputExtender = new PIIFilterInputExtender(document);
 
 namespace PII_Filter
 {

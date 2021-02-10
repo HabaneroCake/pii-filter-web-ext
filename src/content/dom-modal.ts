@@ -1,5 +1,5 @@
 import { browser } from 'webextension-polyfill-ts';
-import { ShadowDomDiv } from './shadow-dom-div';
+import { ShadowDomDiv } from './shadow-dom';
 import { get_fonts } from './font_css';
 
 export class DOMModal extends ShadowDomDiv

@@ -1,5 +1,5 @@
 import { browser } from 'webextension-polyfill-ts';
-import { ShadowDomDiv } from './shadow-dom-div';
+import { ShadowDomDiv } from './shadow-dom';
 import { DOMModal } from './dom-modal';
 import { get_fonts } from './font_css';
 import { Observable } from '../common/observable';

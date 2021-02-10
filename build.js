@@ -4,7 +4,7 @@ const fs = require('fs');
 
 browserify()
     .add('src/service.ts')
-    .plugin(tsify, { noImplicitAny: true, experimentalDecorators: true, target: 'es5'})
+    .plugin(tsify, { noImplicitAny: true, experimentalDecorators: true, target: 'esnext'})
     .bundle()
     .on('error', error => {
         throw new Error(error.toString());
@@ -13,7 +13,7 @@ browserify()
 
 browserify()
     .add('src/content.ts')
-    .plugin(tsify, { noImplicitAny: true, experimentalDecorators: true, target: 'es5'})
+    .plugin(tsify, { noImplicitAny: true, experimentalDecorators: true, target: 'esnext'})
     .bundle()
     .on('error', error => {
         throw new Error(error.toString());

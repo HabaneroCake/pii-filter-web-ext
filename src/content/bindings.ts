@@ -24,6 +24,14 @@ export class Bindings
         });
     }
     /**
+     * add raw unbind call
+     * @param unbind_call the call
+     */
+    public add_unbinding(unbind_call: () => void)
+    {
+        this.unbind_calls.push(unbind_call);
+    }
+    /**
      * removes all listeners and cleans up 
      */
     public delete()

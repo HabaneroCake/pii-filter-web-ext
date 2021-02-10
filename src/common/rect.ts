@@ -38,6 +38,54 @@ export class Rect
         return this.bottom + this.absolute_offs_y;
     }
 
+    public apply_position_to_element(
+        element: HTMLElement,
+        absolute: boolean=false,
+        inner_element?: HTMLElement
+    )
+    {
+        if (absolute)
+        {
+            element.style.left =    `${this.left_absolute + (inner_element ? inner_element.clientLeft : 0)}px`;
+            element.style.top =     `${this.top_absolute + (inner_element ? inner_element.clientTop : 0)}px`;
+        }
+        else
+        {
+            element.style.left =    `${this.left + (inner_element ? inner_element.clientLeft : 0)}px`;
+            element.style.top =     `${this.top + (inner_element ? inner_element.clientTop : 0)}px`;
+        }
+    }
+
+    public apply_width_and_height_to_element(
+        element: HTMLElement,
+        inner_element?: HTMLElement
+    )
+    {
+        if (inner_element)
+        {
+            element.style.width =   `${inner_element.clientWidth}px`;
+            element.style.height =  `${inner_element.clientHeight}px`;
+        }
+        else
+        {
+            element.style.width =   `${this.width}px`;
+            element.style.height =  `${this.height}px`;
+        }
+    }
+
+    public apply_to_element(
+        element: HTMLElement,
+        position: boolean = true,
+        absolute: boolean = false,
+        inner_element?: HTMLElement
+    )
+    {
+        if (position)
+            this.apply_position_to_element(element, absolute, inner_element);
+
+        this.apply_width_and_height_to_element(element, inner_element);
+    }
+
     static from_element(element: HTMLElement): Rect
     {
         const bounding_rect: DOMRect = element.getBoundingClientRect();
