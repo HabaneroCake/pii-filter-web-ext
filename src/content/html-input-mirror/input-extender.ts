@@ -360,6 +360,8 @@ export class PIIFilterInputExtender
 
 // TODO:
 // sync range highlighting
+// regexp -> function, parse each element -> index -> ranges? or list of ranges -> regexp, highlighting?
+
 // input 1 line same functionality
 
 // TODO: eventually:
