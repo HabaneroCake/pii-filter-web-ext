@@ -1588,7 +1588,7 @@ var PII_Filter;
 ;
 new PII_Filter.Content();
 
-},{"./common/common-messages":3,"./content/dom-element-info-overlay":9,"./content/dom-focus-manager":10,"./content/html-input-mirror/input-extender":14,"./content/utils":16,"webextension-polyfill-ts":1}],8:[function(require,module,exports){
+},{"./common/common-messages":3,"./content/dom-element-info-overlay":9,"./content/dom-focus-manager":10,"./content/html-input-mirror/input-extender":15,"./content/utils":17,"webextension-polyfill-ts":1}],8:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Bindings = void 0;
@@ -1819,7 +1819,7 @@ class DOMElementInfoOverlay extends shadow_dom_1.ShadowDomDiv {
 exports.DOMElementInfoOverlay = DOMElementInfoOverlay;
 ;
 
-},{"../common/observable":5,"./dom-modal":11,"./font_css":12,"./shadow-dom":15,"webextension-polyfill-ts":1}],10:[function(require,module,exports){
+},{"../common/observable":5,"./dom-modal":11,"./font_css":13,"./shadow-dom":16,"webextension-polyfill-ts":1}],10:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DOMFocusManager = void 0;
@@ -2133,7 +2133,52 @@ class DOMModal extends shadow_dom_1.ShadowDomDiv {
 exports.DOMModal = DOMModal;
 ;
 
-},{"./font_css":12,"./shadow-dom":15,"webextension-polyfill-ts":1}],12:[function(require,module,exports){
+},{"./font_css":13,"./shadow-dom":16,"webextension-polyfill-ts":1}],12:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.DOMRectHighlight = void 0;
+const shadow_dom_1 = require("./shadow-dom");
+/**
+ * Provides an overlay / highlight around a DOM element
+ */
+class DOMRectHighlight extends shadow_dom_1.ShadowDomDiv {
+    /**
+    * creates an overlay over / around the provided element
+    * @param element the element to highlight
+    */
+    constructor(document, rect, border_width = 3, radius = 5) {
+        super(document);
+        this.rect = rect;
+        this.border_width = border_width;
+        this.radius = radius;
+        this.div.style.display = 'block';
+        this.div.style.visibility = 'visible';
+        this.div.style.position = 'absolute';
+        this.div.style.left = `${this.rect.left}px`;
+        this.div.style.top = `${this.rect.top}px`;
+        // TODO: can clean this up for the different types of DOM elements / formatting
+        this.div.style.width = `${this.rect.width}px`;
+        this.div.style.height = `${this.rect.height}px`;
+        this.div.style.margin = `${-this.border_width}px`;
+        this.div.style.padding = '0px';
+        this.div.style.zIndex = '9999';
+        this.div.style.borderWidth = `${this.border_width}px`;
+        this.div.style.borderStyle = 'solid';
+        this.div.style.borderColor = 'rgba(0, 0, 0, 0)';
+        this.div.style.borderRadius = `${this.radius}px`;
+        this.div.style.pointerEvents = 'none';
+    }
+    /**
+     * set the border color
+     */
+    set color([r, g, b, a]) {
+        this.div.style.borderColor = `rgba(${r}, ${g}, ${b}, ${a})`;
+    }
+}
+exports.DOMRectHighlight = DOMRectHighlight;
+;
+
+},{"./shadow-dom":16}],13:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.get_fonts = void 0;
@@ -2471,7 +2516,7 @@ function get_fonts() {
 exports.get_fonts = get_fonts;
 ;
 
-},{"webextension-polyfill-ts":1}],13:[function(require,module,exports){
+},{"webextension-polyfill-ts":1}],14:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ElementObserver = void 0;
@@ -2506,6 +2551,33 @@ class ElementObserver {
     on_rect_changed, on_style_changed) {
         this.bindings = new bindings_1.Bindings();
         this.active = true;
+        this.style_calculator = new StyleCalculator(document, input_element);
+        // watch for style change
+        const resize_attrs = ['width', 'height', 'inline-size', 'block-size'];
+        let old_css = new Map();
+        for (let [key, value] of this.style_calculator.filter_defaults()) {
+            if (resize_attrs.indexOf(key) == -1) {
+                old_css.set(key, value);
+            }
+        }
+        const style_observer = new MutationObserver((mutations, observer) => {
+            let new_values = new Map();
+            for (let [key, value] of this.style_calculator.filter_defaults()) {
+                // if (resize_attrs.indexOf(key) == -1)
+                // {
+                if (!old_css.has(key) || value != old_css.get(key)) {
+                    new_values.set(key, value);
+                    old_css.set(key, value);
+                }
+                // }
+            }
+            if (new_values.keys.length > 0) {
+                on_style_changed(new_values, old_css);
+                update_rect_from_bounding_client();
+            }
+        });
+        style_observer.observe(input_element, { attributes: true, attributeFilter: ['style', 'class'] });
+        this.bindings.add_unbinding(() => { style_observer.disconnect(); });
         let last_rect = new rect_1.Rect();
         const update_rect = (left, top, width, height, scroll_width = input_element.scrollWidth, scroll_height = input_element.scrollHeight, scroll_x = window.scrollX, scroll_y = window.scrollY) => {
             if (left != last_rect.left ||
@@ -2517,7 +2589,7 @@ class ElementObserver {
                 scroll_x != last_rect.absolute_offs_x ||
                 scroll_y != last_rect.absolute_offs_y) {
                 const new_rect = new rect_1.Rect(left, top, width, height, scroll_width, scroll_height, scroll_x, scroll_y);
-                on_rect_changed(new_rect);
+                on_rect_changed(new_rect, this.style_calculator.comp_style);
                 last_rect = new_rect;
             }
         };
@@ -2549,33 +2621,6 @@ class ElementObserver {
         });
         resize_observer.observe(input_element);
         this.bindings.add_unbinding(() => { resize_observer.disconnect(); });
-        this.style_calculator = new StyleCalculator(document, input_element);
-        // watch for style change
-        const resize_attrs = ['width', 'height', 'inline-size', 'block-size'];
-        let old_css = new Map();
-        for (let [key, value] of this.style_calculator.filter_defaults()) {
-            if (resize_attrs.indexOf(key) == -1) {
-                old_css.set(key, value);
-            }
-        }
-        const style_observer = new MutationObserver((mutations, observer) => {
-            let new_values = new Map();
-            for (let [key, value] of this.style_calculator.filter_defaults()) {
-                // if (resize_attrs.indexOf(key) == -1)
-                // {
-                if (!old_css.has(key) || value != old_css.get(key)) {
-                    new_values.set(key, value);
-                    old_css.set(key, value);
-                }
-                // }
-            }
-            if (new_values.keys.length > 0) {
-                on_style_changed(new_values, old_css);
-                update_rect_from_bounding_client();
-            }
-        });
-        style_observer.observe(input_element, { attributes: true, attributeFilter: ['style', 'class'] });
-        this.bindings.add_unbinding(() => { style_observer.disconnect(); });
         // watch for window resize
         const win_resize_observer = new ResizeObserver((entries, observer) => {
             update_rect_from_bounding_client();
@@ -2590,9 +2635,9 @@ class ElementObserver {
                 setTimeout(rect_polling_update, polling_interval);
             }
         };
-        rect_polling_update();
         // push initial changes
         on_style_changed(old_css, old_css);
+        rect_polling_update();
     }
     delete() {
         this.active = false;
@@ -2603,13 +2648,15 @@ class ElementObserver {
 exports.ElementObserver = ElementObserver;
 ;
 
-},{"../../common/rect":6,"../bindings":8,"../shadow-dom":15}],14:[function(require,module,exports){
+},{"../../common/rect":6,"../bindings":8,"../shadow-dom":16}],15:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PIIFilterInputExtender = exports.TextAreaInputInterface = exports.copy_event = exports.AbstractInputInterface = void 0;
+exports.PIIFilterInputExtender = exports.TextAreaOverlay = exports.copy_event = exports.AbstractInputInterface = void 0;
 const shadow_dom_1 = require("../shadow-dom");
 const bindings_1 = require("../bindings");
 const element_observer_1 = require("./element_observer");
+const rect_1 = require("../../common/rect");
+const dom_rect_highlight_1 = require("../dom-rect-highlight");
 ;
 class AbstractInputInterface extends shadow_dom_1.ShadowDomDiv {
     // add range display stuff here as well
@@ -2620,7 +2667,7 @@ class AbstractInputInterface extends shadow_dom_1.ShadowDomDiv {
         this.div.style.position = 'absolute';
     }
     init() {
-        this.element_observer = new element_observer_1.ElementObserver(document, this.settings.element, this.settings.polling_interval, (rect) => { this.on_rect_changed(rect); }, (changes, all) => { this.on_style_changed(changes, all); });
+        this.element_observer = new element_observer_1.ElementObserver(document, this.settings.element, this.settings.polling_interval, (rect, style) => { this.on_rect_changed(rect, style); }, (changes, all) => { this.on_style_changed(changes, all); });
     }
     delete() {
         this.bindings.delete();
@@ -2639,127 +2686,66 @@ function copy_event(event, new_target) {
     return new Event(event.type, event_dict);
 }
 exports.copy_event = copy_event;
-/**
- * this class exists as an overlay hack since mirroring a textarea doesn't *always* give the right result
- */
-class TextAreaInputInterface extends AbstractInputInterface {
+class TextAreaOverlay extends AbstractInputInterface {
     constructor(settings) {
         super(settings);
-        this.overlay_str = '';
-        this.ignore_resize_callbacks = false;
+        this.viewport = new rect_1.Rect();
         this.input_overlay = settings.document.createElement('div');
+        this.computed_style = window.getComputedStyle(this.input_overlay);
         this.div.appendChild(this.input_overlay);
         const text_area_element = this.settings.element;
         // watch outside changes
         const element_input_callback = (event) => {
             const new_text = text_area_element.value;
-            if (new_text != this.overlay_str) {
-                this.input_overlay.textContent = new_text;
-                if (this.settings.on_input_changed != null)
-                    this.settings.on_input_changed(new_text);
-            }
+            if (this.settings.on_input_changed != null)
+                this.settings.on_input_changed(new_text);
         };
-        // bind check if form or javascript changes textarea contents
+        for (let event_name of ['focus', 'focusin'])
+            this.bindings.bind_event(this.input_overlay, event_name, (event) => {
+                // forward_event(event);
+                event.preventDefault();
+                event.stopPropagation();
+                // sync_contents();
+                this.settings.element.focus();
+            });
+        // bind check if form or event changes textarea contents
         for (let event_name of ['input', 'change'])
             this.bindings.bind_event(this.settings.element, event_name, element_input_callback);
-        // mutation observer as well?
-        const sync_contents = () => {
-            this.overlay_str = this.input_overlay.innerHTML.replace(/(\<\/div\>)|(^\<div\>)/g, '')
-                .replace(/(\<div\>\<\/?br\>)|(\<div\>|<\/?br\>)/g, '\n')
-                .replace(/&amp;/g, '&')
-                .replace(/&gt;/g, '>')
-                .replace(/&lt;/g, '<');
-            text_area_element.value = this.overlay_str;
-        };
-        const forward_event = (event) => {
-            const copied_event = copy_event(event, this.settings.element);
-            this.settings.element.dispatchEvent(copied_event);
-        };
-        // follow text changes
-        for (let event_name of ['input', 'change']) {
-            this.bindings.bind_event(this.input_overlay, event_name, (event) => {
-                sync_contents();
-                forward_event(event);
-                if (this.settings.on_input_changed != null)
-                    this.settings.on_input_changed(this.overlay_str);
-            });
-        }
-        // events which should sync the contents before forwarding the event
-        for (let event_name of [
-            'focus', 'submit', 'cut', 'copy', 'paste', 'keydown', 'keyup', 'contextmenu', 'select', 'selectstart',
-            'selectionchange'
-        ])
-            this.bindings.bind_event(this.input_overlay, event_name, (event) => {
-                sync_contents();
-                forward_event(event);
-            });
-        // forward a list of events (mouse click events are not forwarded since coords could be wrong)
-        for (let event_name of [
-            'reset', 'mouseenter', 'mouseleave', 'mouseover', 'mouseout', 'drag', 'dragend', 'dragenter', 'dragstart',
-            'dragleave', 'dragover', 'drop', 'storage', 'message', 'open', 'orientationchange', 'deviceorientation',
-            'devicemotion', 'pointerover', 'pointerenter', 'pointerout', 'pointerleave', 'show', 'success'
-        ]) {
-            this.bindings.bind_event(this.input_overlay, event_name, (event) => {
-                const copied_event = copy_event(event, this.settings.element);
-                this.settings.element.dispatchEvent(copied_event);
-            });
-        }
-        this.bindings.bind_event(this.input_overlay, 'scroll', (event) => {
-            this.settings.element.scrollTop = this.input_overlay.scrollTop;
-            this.settings.element.scrollLeft = this.input_overlay.scrollLeft;
-            const copied_event = copy_event(event, this.settings.element);
-            this.settings.element.dispatchEvent(copied_event);
-        });
-        this.bindings.bind_event(this.input_overlay, 'blur', (event) => {
-            if (this.settings.on_blur != null)
-                this.settings.on_blur(event);
-            const copied_event = copy_event(event, this.settings.element);
-            this.settings.element.dispatchEvent(copied_event);
-        });
         // keep at end
         super.init();
-        // TODO: resize observer here (needs to account for padding etc.) for forwarding resize to input
-        // sync initial contents
-        this.input_overlay.textContent = text_area_element.value;
-        this.input_overlay.contentEditable = 'true';
-        this.input_overlay.focus();
-        // sync caret
-        if (text_area_element.value.length > 0) {
-            const range = document.createRange();
-            range.setStart(this.input_overlay.childNodes[0], text_area_element.selectionStart);
-            range.setEnd(this.input_overlay.childNodes[0], text_area_element.selectionEnd);
-            const selection = window.getSelection();
-            selection.removeAllRanges();
-            selection.addRange(range);
-        }
-        this.input_overlay.scrollTop = this.settings.element.scrollTop;
-        this.input_overlay.scrollLeft = this.settings.element.scrollLeft;
-        // hide input element
-        this.el_old_transition = this.settings.element.style.transition;
-        this.settings.element.style.transition = 'none';
-        this.settings.element.style.visibility = 'hidden';
+        // this.input_overlay.scrollTop =  this.settings.element.scrollTop;
+        // this.input_overlay.scrollLeft = this.settings.element.scrollLeft;
+        // element bindings
+        for (let event_name of ['blur', 'focusout'])
+            this.bindings.bind_event(this.settings.element, event_name, (event) => {
+                event.preventDefault();
+                let f_event = event;
+                if (f_event.relatedTarget != this.input_overlay) {
+                    if (this.settings.on_blur != null)
+                        this.settings.on_blur(event);
+                }
+            });
     }
     ;
     delete() {
         super.delete();
-        // show input element
-        this.settings.element.style.visibility = 'visible';
-        this.settings.element.style.transition = this.el_old_transition;
     }
-    on_rect_changed(rect) {
+    on_rect_changed(rect, style) {
         rect.apply_position_to_element(this.div, true);
-        // rect.apply_width_and_height_to_element(this.input_overlay);
-        this.input_overlay.style.width = `${this.settings.element.clientWidth}px`;
-        this.input_overlay.style.height = `${this.settings.element.clientHeight}px`;
+        rect.apply_width_and_height_to_element(this.input_overlay);
+        this.viewport = rect_1.Rect.from_rect(rect);
+        this.viewport.left += this.settings.element.clientLeft;
+        this.viewport.top += this.settings.element.clientTop;
+        this.viewport.width = this.settings.element.clientWidth;
+        this.viewport.height = this.settings.element.clientHeight;
+        if (this.t_highlight)
+            this.t_highlight.delete();
+        this.t_highlight = new dom_rect_highlight_1.DOMRectHighlight(document, this.viewport, 2);
+        this.t_highlight.color = [0, 255, 0, 1.0];
     }
     on_style_changed(changes, all) {
         for (let [key, value] of changes) {
             if ([
-                // 'border',
-                // 'border-top',
-                // 'border-bottom',
-                // 'border-left',
-                // 'border-right',
                 'margin',
                 'margin-top',
                 'margin-bottom',
@@ -2780,7 +2766,7 @@ class TextAreaInputInterface extends AbstractInputInterface {
         }
         // overrides
         this.input_overlay.style.position = 'relative';
-        this.input_overlay.style.boxSizing = 'content-box';
+        this.input_overlay.style.boxSizing = 'border-box';
         this.input_overlay.style.display = 'block';
         this.input_overlay.style.margin = '0px';
         this.input_overlay.style.zIndex = '99999';
@@ -2799,12 +2785,14 @@ class TextAreaInputInterface extends AbstractInputInterface {
         if (!all.has('line-height'))
             this.input_overlay.style.lineHeight = 'normal';
         this.input_overlay.style.cssText += 'appearance: textarea;';
+        this.input_overlay.style.outline = '2px solid green';
+        this.input_overlay.style.pointerEvents = 'none';
     }
     contains(element) {
         return (element == this.input_overlay);
     }
 }
-exports.TextAreaInputInterface = TextAreaInputInterface;
+exports.TextAreaOverlay = TextAreaOverlay;
 ;
 class PIIFilterInputExtender {
     constructor(main_document) {
@@ -2835,7 +2823,7 @@ class PIIFilterInputExtender {
                 if (target_element.nodeName == 'INPUT')
                     return; // TODO
                 else if (target_element.nodeName == 'TEXTAREA')
-                    this.input_interface = new TextAreaInputInterface(settings);
+                    this.input_interface = new TextAreaOverlay(settings);
                 else if (target_element.isContentEditable)
                     return;
                 else
@@ -2861,17 +2849,15 @@ class PIIFilterInputExtender {
 exports.PIIFilterInputExtender = PIIFilterInputExtender;
 ;
 // TODO:
-// have resize observer on overlay for size forwarding
-// resizing could affect other element only after release?
-// show last line if only newline / whitespace
 // sync range highlighting
+// regexp -> function, parse each element -> index -> ranges? or list of ranges -> regexp, highlighting?
+// input 1 line same functionality
 // TODO: eventually:
-// resize forwarding 
 // poll for uncaught css changes
 // redo firefox support so that ctr/cmd keycomb work. or try different approach
 // have scroll work other way around if not triggered by own el.
 
-},{"../bindings":8,"../shadow-dom":15,"./element_observer":13}],15:[function(require,module,exports){
+},{"../../common/rect":6,"../bindings":8,"../dom-rect-highlight":12,"../shadow-dom":16,"./element_observer":14}],16:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ShadowDomDiv = exports.ShadowDom = void 0;
@@ -2928,7 +2914,7 @@ class ShadowDomDiv extends ShadowDom {
 exports.ShadowDomDiv = ShadowDomDiv;
 ;
 
-},{}],16:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Utils = void 0;
