@@ -6,6 +6,8 @@ import { DOMRectHighlight } from '../dom-rect-highlight';
 
 // currently only works for 1 input at a time
 
+
+
 export interface InputInterfaceSettings
 {
     document:           Document;
@@ -33,7 +35,7 @@ export abstract class AbstractInputInterface extends ShadowDomDiv
             document,
             this.settings.element,
             this.settings.polling_interval,
-            (rect: Rect, style: CSSStyleDeclaration) => { this.on_rect_changed(rect, style); },
+            (rect: Rect) => { this.on_rect_changed(rect); },
             (changes: Map<string, string>, all: Map<string, string>) => { this.on_style_changed(changes, all); },
         );
     }
@@ -45,7 +47,7 @@ export abstract class AbstractInputInterface extends ShadowDomDiv
         super.delete();
     }
 
-    public abstract on_rect_changed(rect: Rect, style: CSSStyleDeclaration): void;
+    public abstract on_rect_changed(rect: Rect): void;
     public abstract on_style_changed(changes: Map<string, string>, all: Map<string, string>): void;
     public abstract contains(element: HTMLElement): boolean;
 };
@@ -60,196 +62,128 @@ export function copy_event(event: Event, new_target?: HTMLElement): Event
     return new Event(event.type, event_dict);
 }
 
-interface LineMapping
+function get_scrollbar_width(document: Document): number
 {
-    caret_range:    [number, number];
-    height?:        number;
-};
+    // Creating invisible container
+    const outer = document.createElement('div');
+    outer.style.visibility = 'hidden';
+    outer.style.overflow = 'scroll'; // forcing scrollbar to appear
+    // outer.style.msOverflowStyle = 'scrollbar'; // needed for WinJS apps
+    document.body.appendChild(outer);
+
+    // Creating inner element and placing it in the container
+    const inner = document.createElement('div');
+    outer.appendChild(inner);
+
+    // Calculating difference between container's full width and the child width
+    const scrollbar_width = (outer.getBoundingClientRect().width - inner.getBoundingClientRect().width);
+
+    // Removing temporary elements from the DOM
+    outer.parentNode.removeChild(outer);
+
+    return scrollbar_width;
+}
+
+const re_ignore_css_props: RegExp = new RegExp('(' + [
+    'margin',
+    'margin-top',
+    'margin-bottom',
+    'margin-left',
+    'margin-right',
+    'margin-block-start',
+    'margin-block-end',
+    'margin-inline-start',
+    'margin-inline-end',
+    'visibility',
+    'position',
+    'top',
+    'left',
+    'bottom',
+    'right',
+    'max-width',
+    'max-height',
+    'transform',
+    'max-inline-size',
+    'max-block-size',
+    'width',
+    'height'
+].join('|') + ')', 'i')
+console.log(re_ignore_css_props);
+
 
 export class TextAreaOverlay extends AbstractInputInterface
 {
-    protected input_overlay:            HTMLElement;
+    protected text_node:                Text;
     protected computed_style:           CSSStyleDeclaration;
     protected viewport:                 Rect = new Rect();
+
+    protected readonly scrollbar_width: number;
+    protected scroll_offset:            [number, number] = [0, 0]
 
     protected t_highlight:              DOMRectHighlight;
     constructor(settings: InputInterfaceSettings)
     {
         super(settings);
-        
-        this.input_overlay = settings.document.createElement('div');
-        this.computed_style = window.getComputedStyle(this.settings.element);
-        this.div.appendChild(this.input_overlay);
-
         const text_area_element: HTMLTextAreaElement = (this.settings.element as HTMLTextAreaElement);
+        
+        // Get the scrollbar width
+        this.scrollbar_width =  get_scrollbar_width(settings.document);        
+        this.text_node =        settings.document.createTextNode(text_area_element.value);
+        this.computed_style =   window.getComputedStyle(this.settings.element);
+        this.div.appendChild(this.text_node);
+
+        // initial styling
+        this.div.setAttribute('aria-hidden', 'true')
+        this.div.setAttribute('style', `
+            position: fixed;
+            height: 0;
+            width: 0;
+            top: 0;
+            height: 0;
+            color: red;
+            overflow: hidden;
+            mouse-events: none;
+        `)
 
         // watch outside changes
         const element_input_callback = (event: Event) => {
             const new_text: string = text_area_element.value;
+            this.text_node.nodeValue = new_text;
             if (this.settings.on_input_changed != null)
                 this.settings.on_input_changed(new_text);
-
-            this.probe_line_mapping();
         };
-
-        for (let event_name of ['focus', 'focusin'])
-            this.bindings.bind_event(this.input_overlay, event_name, (event: Event) => {
-                // forward_event(event);
-                event.preventDefault();
-                event.stopPropagation();
-                // sync_contents();
-            });
 
         // bind check if form or event changes textarea contents
         for (let event_name of ['input', 'change'])
             this.bindings.bind_event(this.settings.element, event_name, element_input_callback);
+        
+        // sync scroll
+        const sync_scroll = () => {
+            this.scroll_offset = [
+                this.settings.element.scrollTop,
+                this.settings.element.scrollLeft
+            ];
+            // TODO: callback
+        };
+        this.bindings.bind_event(this.settings.element, 'scroll', (event: Event) => {
+            sync_scroll()
+        });
+        sync_scroll()
 
         // keep at end
         super.init();
 
-        // this.input_overlay.scrollTop =  this.settings.element.scrollTop;
-        // this.input_overlay.scrollLeft = this.settings.element.scrollLeft;
-
-        // element bindings
-        this.bindings.bind_event(this.settings.element, 'mousedown', () => {
-            const m_event: MouseEvent = event as MouseEvent;
-            let caret_index: number = 0;
-            if (typeof document.caretPositionFromPoint != "undefined") {
-                let caret_pos: CaretPosition = document.caretPositionFromPoint(m_event.pageX, m_event.pageY);
-                caret_index = caret_pos.offset;
-            } else if (typeof document.caretRangeFromPoint != "undefined") {
-                let caret_range: Range = document.caretRangeFromPoint(m_event.pageX, m_event.pageY);
-                caret_index = 0;
-                console.log(caret_range.toString());
-            }
-            console.log(caret_index);
-        });
+        // bind blur action
         for (let event_name of ['blur', 'focusout'])
             this.bindings.bind_event(this.settings.element, event_name, (event: Event) => {
                 let f_event: FocusEvent = event as FocusEvent;
-                if (f_event.relatedTarget != this.input_overlay)
+                if (f_event.relatedTarget != this.text_node)
                 {
                     if (this.settings.on_blur != null)
                         this.settings.on_blur(event);
                 }
             });
     };
-
-    protected probe_line_mapping()
-    {
-        const caret_index_from_point = (x: number, y: number): number =>
-        {
-            // todo, maybe this is different for chrome and ff?
-            x -= window.scrollX;
-            y -= window.scrollY;
-
-            let caret_index: number;
-            if (typeof document.caretPositionFromPoint != "undefined") {
-                let caret_pos: CaretPosition = document.caretPositionFromPoint(x, y);
-                if (caret_pos != null)
-                    caret_index = caret_pos.offset;
-            } else if (typeof document.caretRangeFromPoint != "undefined") {
-                let caret_range: Range = document.caretRangeFromPoint(x, y);
-                if (caret_range != null)
-                    caret_index = caret_range.endOffset;
-            }
-            return caret_index;
-        };
-        const max_len:  number =     (this.settings.element as HTMLTextAreaElement).value.length;
-        let lines:      Array<LineMapping> = new Array<LineMapping>();
-        const caret_index_valid =   (index: number): boolean => {
-            if (index != null)
-                return (index != 0 || lines.length == 0) && index != max_len;
-            return false;
-        };
-
-        let last_mapping:       LineMapping;
-        let last_mapping_left:  number;
-        let last_line_start_y:  number = 0;
-        let y:                  number = parseFloat(this.computed_style.paddingTop);
-        let increment:          number = 2;
-        // move down and get a valid set
-        for (y; y < this.viewport.height; y += increment)
-        {
-            let new_start_caret: boolean = false;
-            if (last_mapping != null)
-            {
-                const t_caret = caret_index_from_point(
-                    this.viewport.left_absolute + last_mapping_left,
-                    this.viewport.top_absolute + y
-                );
-                // console.log(t_caret, last_mapping.caret_range[0]);
-                
-                new_start_caret = caret_index_valid(t_caret) && t_caret != last_mapping.caret_range[0];
-            }
-
-            let start_caret_pos: number;
-            if (last_mapping == null || new_start_caret)
-            {
-                if (last_mapping_left == null)
-                {
-                    for (let x: number = 0; x < this.viewport.width; x += 3)
-                    {
-                        const t_caret = caret_index_from_point(
-                            this.viewport.left_absolute + x,
-                            this.viewport.top_absolute + y
-                        );
-                        
-                        if (caret_index_valid(t_caret))
-                        {
-                            start_caret_pos =   t_caret;
-                            last_mapping_left = x;
-                            break;
-                        }
-                    }
-                }
-                else
-                {
-                    const t_caret = caret_index_from_point(
-                        this.viewport.left_absolute + last_mapping_left,
-                        this.viewport.top_absolute + y
-                    );
-                    if (caret_index_valid(t_caret))
-                        start_caret_pos =   t_caret;
-                }
-                if (start_caret_pos != null)
-                {
-                    const height:   number = y - last_line_start_y;
-                    const mapping:  LineMapping = {
-                        caret_range: [
-                            start_caret_pos,
-                            start_caret_pos
-                        ],
-                        height: height
-                    };
-                    lines.push(mapping);
-
-                    if (lines.length == 2)
-                    {
-                        increment = parseFloat(this.computed_style.fontSize) / 2;
-                    }
-
-                    last_mapping =      mapping;
-                    last_line_start_y = y;
-                }
-            }
-        }
-        
-        // TODO: very last word end pos also needs to be checked
-
-        let last_line: number;
-        for (let line of lines)
-        {
-            if (last_line != null)
-            {
-                console.log(
-                    [last_line, line.caret_range[0]],
-                    (this.settings.element as HTMLTextAreaElement).value.substring(last_line, line.caret_range[0])
-                )
-            }
-            last_line = line.caret_range[0];
-        }
-    }
 
     public delete()
     {
@@ -259,79 +193,89 @@ export class TextAreaOverlay extends AbstractInputInterface
         super.delete();
     }
 
-    public on_rect_changed(rect: Rect, style: CSSStyleDeclaration)
+    public on_rect_changed(rect: Rect)
     {
-        rect.apply_position_to_element(this.div, true);
-        rect.apply_width_and_height_to_element(this.input_overlay);
+        rect.apply_position_to_element(this.div, true, this.settings.element);
+        // this.div.style.left =    `${this.settings.element.clientLeft}px`;
+        // this.div.style.top =     `${this.top_absolute + (inner_element ? inner_element.clientTop : 0)}px`;
 
-        this.viewport =         Rect.from_rect(rect);
-        this.viewport.left +=   this.settings.element.clientLeft;
-        this.viewport.top +=    this.settings.element.clientTop;
-        this.viewport.width =   this.settings.element.clientWidth;
-        this.viewport.height =  this.settings.element.clientHeight;
+        // this.viewport =         Rect.from_rect(rect);
+        // this.viewport.left +=   this.settings.element.clientLeft;
+        // this.viewport.top +=    this.settings.element.clientTop;
+        // this.viewport.width =   this.settings.element.clientWidth;
+        // this.viewport.height =  this.settings.element.clientHeight;
 
-        if (this.t_highlight != null)
-            this.t_highlight.delete();
+        const overflowing_y: boolean = this.settings.element.scrollHeight != this.settings.element.clientHeight;
+        this.div.style.width = `${
+            rect.width - (
+                (overflowing_y ? this.scrollbar_width : 0) +
+                parseFloat(this.computed_style.borderLeftWidth) +
+                parseFloat(this.computed_style.borderRightWidth)
+            )
+        }px`;
+        const overflowing_x: boolean = this.settings.element.scrollWidth != this.settings.element.clientWidth;
+        this.div.style.height = `${
+            rect.height - (
+                (overflowing_x ? this.scrollbar_width : 0) +
+                parseFloat(this.computed_style.borderTopWidth) +
+                parseFloat(this.computed_style.borderBottomWidth)
+            )
+        }px`;
 
-        this.t_highlight = new DOMRectHighlight(document, this.viewport, 2);
-        this.t_highlight.color = [0, 255, 0, 1.0];
+        // if (this.t_highlight != null)
+        //     this.t_highlight.delete();
+
+        // this.t_highlight = new DOMRectHighlight(document, this.viewport, 2);
+        // this.t_highlight.color = [0, 255, 0, 1.0];
     }
 
     public on_style_changed(changes: Map<string, string>, all: Map<string, string>)
     {
         for (let [key, value] of changes)
         {
-            if ([ // ignore following
-                'margin',
-                'margin-top',
-                'margin-bottom',
-                'margin-left',
-                'margin-right',
-                'margin-block-start',
-                'margin-block-end',
-                'margin-inline-start',
-                'margin-inline-end',
-                'user-modify',
-                '-webkit-user-modify',
-                'visibility',
-                'perspective-origin',
-                'transform-origin'
-            ].indexOf(key) == -1)
-                Reflect.set(this.input_overlay.style, key, value);
-            // console.log(key, value);
+            if (!re_ignore_css_props.test(key))
+            {
+                console.log(key);
+                Reflect.set(this.div.style, key, value);
+            }
         }
-        
+
         // overrides
-        this.input_overlay.style.position =     'relative';
-        this.input_overlay.style.boxSizing =    'border-box';
-        this.input_overlay.style.display =      'block';
-        this.input_overlay.style.margin =       '0px';
-        this.input_overlay.style.zIndex =       '99999';
-        this.input_overlay.style.transition =   'none';
-        this.input_overlay.style.animation =    'none';
+        // this.div.style.display =      "inline" === this.computed_style.display ? "inline-block" : this.computed_style.display;
+        // this.div.style.position =     'relative';
+        // this.div.style.display =      'block';
+        // this.div.style.margin =       '0px';
+        this.div.style.boxSizing =      'border-box';
+        this.div.style.overflow =       'visible';
+        // this.div.style.zIndex =       '99999';
+        // this.div.style.transition =   'none';
+        // this.div.style.animation =    'none';
+        // this.div.style.borderRightWidth =   '0px';/
+        // this.settings.element.style.textRendering ='geometricPrecision'; // !!@!TODO
+        this.div.style.textRendering =  'geometricPrecision';
+        this.div.style.border =         'none';
 
         // set defaults
-        for (let key of ['overflow-x', 'overflow-y'])
-            if (!all.has(key))
-                this.input_overlay.style.setProperty(key, 'auto');
+        // for (let key of ['overflow-x', 'overflow-y'])
+        //     if (!all.has(key))
+        //         this.div.style.setProperty(key, 'auto');
         if (!all.has('white-space'))
-            this.input_overlay.style.whiteSpace =   'pre-wrap';
+            this.div.style.whiteSpace =   'pre-wrap';
         if (!all.has('word-wrap'))
-            this.input_overlay.style.wordWrap =     'break-word';
-        if (!all.has('resize'))
-            this.input_overlay.style.resize =       'both';
+            this.div.style.wordWrap =     'break-word';
+        // if (!all.has('resize'))
+        //     this.div.style.resize =       'both';
         if (!all.has('line-height'))
-            this.input_overlay.style.lineHeight =   'normal';
+            this.div.style.lineHeight =   'normal';
         
-        this.input_overlay.style.cssText +=         'appearance: textarea;';
-        this.input_overlay.style.outline =          '2px solid green';
-        this.input_overlay.style.pointerEvents =    'none';
-        this.div.style.pointerEvents =              'none';
+        this.div.style.cssText +=         'appearance: textarea;';
+        // this.div.style.outline =          '2px solid green';
+        this.div.style.pointerEvents =    'none';
     }
     
     public contains(element: HTMLElement): boolean
     {
-        return (element == this.input_overlay);
+        return (element == this.div);
     }
 };
 

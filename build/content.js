@@ -1588,7 +1588,7 @@ var PII_Filter;
 ;
 new PII_Filter.Content();
 
-},{"./common/common-messages":3,"./content/dom-element-info-overlay":9,"./content/dom-focus-manager":10,"./content/html-input-mirror/input-extender":15,"./content/utils":17,"webextension-polyfill-ts":1}],8:[function(require,module,exports){
+},{"./common/common-messages":3,"./content/dom-element-info-overlay":9,"./content/dom-focus-manager":10,"./content/html-input-mirror/input-extender":14,"./content/utils":16,"webextension-polyfill-ts":1}],8:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Bindings = void 0;
@@ -1819,7 +1819,7 @@ class DOMElementInfoOverlay extends shadow_dom_1.ShadowDomDiv {
 exports.DOMElementInfoOverlay = DOMElementInfoOverlay;
 ;
 
-},{"../common/observable":5,"./dom-modal":11,"./font_css":13,"./shadow-dom":16,"webextension-polyfill-ts":1}],10:[function(require,module,exports){
+},{"../common/observable":5,"./dom-modal":11,"./font_css":12,"./shadow-dom":15,"webextension-polyfill-ts":1}],10:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DOMFocusManager = void 0;
@@ -2133,52 +2133,7 @@ class DOMModal extends shadow_dom_1.ShadowDomDiv {
 exports.DOMModal = DOMModal;
 ;
 
-},{"./font_css":13,"./shadow-dom":16,"webextension-polyfill-ts":1}],12:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.DOMRectHighlight = void 0;
-const shadow_dom_1 = require("./shadow-dom");
-/**
- * Provides an overlay / highlight around a DOM element
- */
-class DOMRectHighlight extends shadow_dom_1.ShadowDomDiv {
-    /**
-    * creates an overlay over / around the provided element
-    * @param element the element to highlight
-    */
-    constructor(document, rect, border_width = 3, radius = 5) {
-        super(document);
-        this.rect = rect;
-        this.border_width = border_width;
-        this.radius = radius;
-        this.div.style.display = 'block';
-        this.div.style.visibility = 'visible';
-        this.div.style.position = 'absolute';
-        this.div.style.left = `${this.rect.left}px`;
-        this.div.style.top = `${this.rect.top}px`;
-        // TODO: can clean this up for the different types of DOM elements / formatting
-        this.div.style.width = `${this.rect.width}px`;
-        this.div.style.height = `${this.rect.height}px`;
-        this.div.style.margin = `${-this.border_width}px`;
-        this.div.style.padding = '0px';
-        this.div.style.zIndex = '9999';
-        this.div.style.borderWidth = `${this.border_width}px`;
-        this.div.style.borderStyle = 'solid';
-        this.div.style.borderColor = 'rgba(0, 0, 0, 0)';
-        this.div.style.borderRadius = `${this.radius}px`;
-        this.div.style.pointerEvents = 'none';
-    }
-    /**
-     * set the border color
-     */
-    set color([r, g, b, a]) {
-        this.div.style.borderColor = `rgba(${r}, ${g}, ${b}, ${a})`;
-    }
-}
-exports.DOMRectHighlight = DOMRectHighlight;
-;
-
-},{"./shadow-dom":16}],13:[function(require,module,exports){
+},{"./font_css":12,"./shadow-dom":15,"webextension-polyfill-ts":1}],12:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.get_fonts = void 0;
@@ -2516,7 +2471,7 @@ function get_fonts() {
 exports.get_fonts = get_fonts;
 ;
 
-},{"webextension-polyfill-ts":1}],14:[function(require,module,exports){
+},{"webextension-polyfill-ts":1}],13:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ElementObserver = void 0;
@@ -2648,7 +2603,7 @@ class ElementObserver {
 exports.ElementObserver = ElementObserver;
 ;
 
-},{"../../common/rect":6,"../bindings":8,"../shadow-dom":16}],15:[function(require,module,exports){
+},{"../../common/rect":6,"../bindings":8,"../shadow-dom":15}],14:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PIIFilterInputExtender = exports.TextAreaOverlay = exports.copy_event = exports.AbstractInputInterface = void 0;
@@ -2656,7 +2611,6 @@ const shadow_dom_1 = require("../shadow-dom");
 const bindings_1 = require("../bindings");
 const element_observer_1 = require("./element_observer");
 const rect_1 = require("../../common/rect");
-const dom_rect_highlight_1 = require("../dom-rect-highlight");
 ;
 class AbstractInputInterface extends shadow_dom_1.ShadowDomDiv {
     // add range display stuff here as well
@@ -2686,41 +2640,55 @@ function copy_event(event, new_target) {
     return new Event(event.type, event_dict);
 }
 exports.copy_event = copy_event;
+// this.container.setAttribute("aria-hidden", "true"), this.container.setAttribute("style", "position: fixed; height: 0; width: 0; top: 0; height: 0; overflow: hidden; mouse-events: none")
 class TextAreaOverlay extends AbstractInputInterface {
     constructor(settings) {
         super(settings);
         this.viewport = new rect_1.Rect();
-        this.input_overlay = settings.document.createElement('div');
-        this.computed_style = window.getComputedStyle(this.input_overlay);
-        this.div.appendChild(this.input_overlay);
         const text_area_element = this.settings.element;
+        this.text_node = settings.document.createTextNode(text_area_element.value);
+        this.computed_style = window.getComputedStyle(this.settings.element);
+        this.div.appendChild(this.text_node);
         // watch outside changes
         const element_input_callback = (event) => {
             const new_text = text_area_element.value;
+            this.text_node.nodeValue = new_text;
             if (this.settings.on_input_changed != null)
                 this.settings.on_input_changed(new_text);
         };
-        for (let event_name of ['focus', 'focusin'])
-            this.bindings.bind_event(this.input_overlay, event_name, (event) => {
-                // forward_event(event);
-                event.preventDefault();
-                event.stopPropagation();
-                // sync_contents();
-                this.settings.element.focus();
-            });
+        // for (let event_name of ['focus', 'focusin'])
+        //     this.bindings.bind_event(this.text_node, event_name, (event: Event) => {
+        //         // forward_event(event);
+        //         event.preventDefault();
+        //         event.stopPropagation();
+        //         // sync_contents();
+        //     });
         // bind check if form or event changes textarea contents
         for (let event_name of ['input', 'change'])
             this.bindings.bind_event(this.settings.element, event_name, element_input_callback);
         // keep at end
         super.init();
-        // this.input_overlay.scrollTop =  this.settings.element.scrollTop;
-        // this.input_overlay.scrollLeft = this.settings.element.scrollLeft;
+        // this.text_node.scrollTop =  this.settings.element.scrollTop;
+        // this.text_node.scrollLeft = this.settings.element.scrollLeft;
         // element bindings
+        this.bindings.bind_event(this.settings.element, 'mousedown', () => {
+            const m_event = event;
+            let caret_index = 0;
+            if (typeof document.caretPositionFromPoint != "undefined") {
+                let caret_pos = document.caretPositionFromPoint(m_event.pageX, m_event.pageY);
+                caret_index = caret_pos.offset;
+            }
+            else if (typeof document.caretRangeFromPoint != "undefined") {
+                let caret_range = document.caretRangeFromPoint(m_event.pageX, m_event.pageY);
+                caret_index = 0;
+                // console.log(caret_range.toString());
+            }
+            console.log(caret_index);
+        });
         for (let event_name of ['blur', 'focusout'])
             this.bindings.bind_event(this.settings.element, event_name, (event) => {
-                event.preventDefault();
                 let f_event = event;
-                if (f_event.relatedTarget != this.input_overlay) {
+                if (f_event.relatedTarget != this.text_node) {
                     if (this.settings.on_blur != null)
                         this.settings.on_blur(event);
                 }
@@ -2728,20 +2696,37 @@ class TextAreaOverlay extends AbstractInputInterface {
     }
     ;
     delete() {
+        if (this.t_highlight != null)
+            this.t_highlight.delete();
         super.delete();
     }
     on_rect_changed(rect, style) {
-        rect.apply_position_to_element(this.div, true);
-        rect.apply_width_and_height_to_element(this.input_overlay);
-        this.viewport = rect_1.Rect.from_rect(rect);
-        this.viewport.left += this.settings.element.clientLeft;
-        this.viewport.top += this.settings.element.clientTop;
-        this.viewport.width = this.settings.element.clientWidth;
-        this.viewport.height = this.settings.element.clientHeight;
-        if (this.t_highlight)
-            this.t_highlight.delete();
-        this.t_highlight = new dom_rect_highlight_1.DOMRectHighlight(document, this.viewport, 2);
-        this.t_highlight.color = [0, 255, 0, 1.0];
+        rect.apply_position_to_element(this.div, true, this.settings.element);
+        // this.div.style.left =    `${this.settings.element.clientLeft}px`;
+        // this.div.style.top =     `${this.top_absolute + (inner_element ? inner_element.clientTop : 0)}px`;
+        // this.viewport =         Rect.from_rect(rect);
+        // this.viewport.left +=   this.settings.element.clientLeft;
+        // this.viewport.top +=    this.settings.element.clientTop;
+        // this.viewport.width =   this.settings.element.clientWidth;
+        // this.viewport.height =  this.settings.element.clientHeight;
+        const w_diff = rect.width - this.settings.element.offsetWidth;
+        const h_diff = rect.height - this.settings.element.offsetHeight;
+        const scrollbarWidth = this.settings.element.offsetWidth - (this.settings.element.clientWidth +
+            parseFloat(this.computed_style.borderLeftWidth) + parseFloat(this.computed_style.borderRightWidth));
+        this.div.style.width = `${rect.width - scrollbarWidth
+        // this.settings.element.clientWidth +
+        // parseFloat(this.computed_style.borderLeftWidth) + parseFloat(this.computed_style.borderRightWidth) - w_diff
+        // rect.width - 1.75
+        }px`;
+        this.div.style.height = `${rect.height
+        // this.settings.element.clientHeight +
+        // parseFloat(this.computed_style.borderTopWidth) + parseFloat(this.computed_style.borderBottomWidth) - h_diff
+        // rect.height
+        }px`;
+        // if (this.t_highlight != null)
+        //     this.t_highlight.delete();
+        // this.t_highlight = new DOMRectHighlight(document, this.viewport, 2);
+        // this.t_highlight.color = [0, 255, 0, 1.0];
     }
     on_style_changed(changes, all) {
         for (let [key, value] of changes) {
@@ -2755,41 +2740,51 @@ class TextAreaOverlay extends AbstractInputInterface {
                 'margin-block-end',
                 'margin-inline-start',
                 'margin-inline-end',
-                'user-modify',
-                '-webkit-user-modify',
                 'visibility',
-                'perspective-origin',
-                'transform-origin'
+                'position',
+                'top',
+                'left',
+                'bottom',
+                'right',
+                'max-width',
+                'max-height',
+                'transform',
+                'max-inline-size',
+                'max-block-size'
+                // 'perspective-origin',
+                // 'transform-origin'
             ].indexOf(key) == -1)
-                Reflect.set(this.input_overlay.style, key, value);
+                Reflect.set(this.div.style, key, value);
             // console.log(key, value);
         }
         // overrides
-        this.input_overlay.style.position = 'relative';
-        this.input_overlay.style.boxSizing = 'border-box';
-        this.input_overlay.style.display = 'block';
-        this.input_overlay.style.margin = '0px';
-        this.input_overlay.style.zIndex = '99999';
-        this.input_overlay.style.transition = 'none';
-        this.input_overlay.style.animation = 'none';
+        this.div.style.display = "inline" === this.computed_style.display ? "inline-block" : this.computed_style.display;
+        this.div.style.position = 'relative';
+        this.div.style.boxSizing = 'border-box';
+        // this.div.style.display =      'block';
+        // this.div.style.margin =       '0px';
+        this.div.style.zIndex = '99999';
+        // this.div.style.transition =   'none';
+        // this.div.style.animation =    'none';
+        this.div.style.overflow = 'visible';
         // set defaults
-        for (let key of ['overflow-x', 'overflow-y'])
-            if (!all.has(key))
-                this.input_overlay.style.setProperty(key, 'auto');
+        // for (let key of ['overflow-x', 'overflow-y'])
+        //     if (!all.has(key))
+        //         this.div.style.setProperty(key, 'auto');
         if (!all.has('white-space'))
-            this.input_overlay.style.whiteSpace = 'pre-wrap';
+            this.div.style.whiteSpace = 'pre-wrap';
         if (!all.has('word-wrap'))
-            this.input_overlay.style.wordWrap = 'break-word';
-        if (!all.has('resize'))
-            this.input_overlay.style.resize = 'both';
+            this.div.style.wordWrap = 'break-word';
+        // if (!all.has('resize'))
+        //     this.div.style.resize =       'both';
         if (!all.has('line-height'))
-            this.input_overlay.style.lineHeight = 'normal';
-        this.input_overlay.style.cssText += 'appearance: textarea;';
-        this.input_overlay.style.outline = '2px solid green';
-        this.input_overlay.style.pointerEvents = 'none';
+            this.div.style.lineHeight = 'normal';
+        this.div.style.cssText += 'appearance: textarea;';
+        // this.div.style.outline =          '2px solid green';
+        this.div.style.pointerEvents = 'none';
     }
     contains(element) {
-        return (element == this.input_overlay);
+        return (element == this.div);
     }
 }
 exports.TextAreaOverlay = TextAreaOverlay;
@@ -2814,7 +2809,7 @@ class PIIFilterInputExtender {
                 polling_interval: 5000,
                 on_blur: on_blur
             };
-            const add_interface = () => {
+            const add_interface = (event) => {
                 target_element.removeEventListener('mouseup', add_interface);
                 target_element.removeEventListener('keyup', add_interface);
                 // ignore if target is part of input interface
@@ -2857,7 +2852,7 @@ exports.PIIFilterInputExtender = PIIFilterInputExtender;
 // redo firefox support so that ctr/cmd keycomb work. or try different approach
 // have scroll work other way around if not triggered by own el.
 
-},{"../../common/rect":6,"../bindings":8,"../dom-rect-highlight":12,"../shadow-dom":16,"./element_observer":14}],16:[function(require,module,exports){
+},{"../../common/rect":6,"../bindings":8,"../shadow-dom":15,"./element_observer":13}],15:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ShadowDomDiv = exports.ShadowDom = void 0;
@@ -2914,7 +2909,7 @@ class ShadowDomDiv extends ShadowDom {
 exports.ShadowDomDiv = ShadowDomDiv;
 ;
 
-},{}],17:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Utils = void 0;

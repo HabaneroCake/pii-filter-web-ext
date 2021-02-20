@@ -52,7 +52,7 @@ export class ElementObserver
         document: Document,
         input_element: HTMLElement,
         polling_interval: number, // for uncaught changes
-        on_rect_changed: (rect: Rect, style: CSSStyleDeclaration) => void,
+        on_rect_changed: (rect: Rect) => void,
         on_style_changed: (changed: Map<string, string>, all: Map<string, string>) => void,
     )
     {
@@ -125,7 +125,7 @@ export class ElementObserver
                     scroll_x,
                     scroll_y
                 )
-                on_rect_changed(new_rect, this.style_calculator.comp_style);
+                on_rect_changed(new_rect);
                 last_rect = new_rect;
             }
         }
