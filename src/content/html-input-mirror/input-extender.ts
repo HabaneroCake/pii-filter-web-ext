@@ -77,7 +77,7 @@ function get_scrollbar_width(document: Document): number
     const width: number =           (outer.getBoundingClientRect().width - inner.getBoundingClientRect().width);
     // remove element
     outer.remove();
-
+    
     return width;
 }
 
@@ -140,7 +140,7 @@ export class TextAreaOverlay extends AbstractInputInterface
             color: red;
             overflow: hidden;
             mouse-events: none;
-            // visibility: hidden;
+            /* visibility: hidden; */
         `)
 
         // watch outside changes

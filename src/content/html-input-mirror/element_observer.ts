@@ -195,7 +195,7 @@ export class ElementObserver
                 setTimeout(rect_polling_update, polling_interval);
             }
         };
-        // push initial changes
+        // notify of initial changes
         on_style_changed(old_css, old_css);
         rect_polling_update();
     }
