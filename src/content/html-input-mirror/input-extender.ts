@@ -111,8 +111,8 @@ export class TextAreaOverlay extends AbstractInputInterface
     protected text_node:                Text;
     protected computed_style:           CSSStyleDeclaration;
     protected rect:                     Rect = new Rect();
-    protected viewport:                 Rect = new Rect();
-    protected clip_rect:            Rect = new Rect();
+    protected viewport_o:               Rect = new Rect();
+    protected viewport_i:               Rect = new Rect();
 
     protected readonly scrollbar_width: number;
     protected scroll_offset:            [number, number] = [0, 0]
@@ -205,38 +205,38 @@ export class TextAreaOverlay extends AbstractInputInterface
     public on_rect_changed(rect: Rect)
     {
         this.rect =                     rect;
-        this.viewport =                 Rect.from_rect(this.rect);
-        this.viewport.left +=           this.settings.element.clientLeft;
-        this.viewport.top +=            this.settings.element.clientTop;
+        this.viewport_o =               Rect.from_rect(this.rect);
+        this.viewport_o.left +=         this.settings.element.clientLeft;
+        this.viewport_o.top +=          this.settings.element.clientTop;
 
         const overflowing_y: boolean =  this.settings.element.scrollHeight != this.settings.element.clientHeight;
-        this.viewport.width =           this.rect.width - (
+        this.viewport_o.width =         this.rect.width - (
             (overflowing_y ? this.scrollbar_width : 0) +
             parseFloat(this.computed_style.borderLeftWidth) +
             parseFloat(this.computed_style.borderRightWidth)
         );
 
         const overflowing_x: boolean =  this.settings.element.scrollWidth != this.settings.element.clientWidth;
-        this.viewport.height =          this.rect.height - (
+        this.viewport_o.height =        this.rect.height - (
             (overflowing_x ? this.scrollbar_width : 0) +
             parseFloat(this.computed_style.borderTopWidth) +
             parseFloat(this.computed_style.borderBottomWidth)
         );
 
-        this.div.style.width =          `${this.viewport.width}px`;
-        this.div.style.height =         `${this.viewport.height}px`;
+        this.div.style.width =          `${this.viewport_o.width}px`;
+        this.div.style.height =         `${this.viewport_o.height}px`;
 
-        this.clip_rect =                Rect.from_rect(this.viewport);
+        this.viewport_i =               Rect.from_rect(this.viewport_o);
         if (true) //! TODO: check if firefox
         {
             const pd_l:     number =    parseFloat(this.computed_style.paddingLeft);
             const pd_t:     number =    parseFloat(this.computed_style.paddingTop);
             const pd_r:     number =    parseFloat(this.computed_style.paddingRight);
             const pd_b:     number =    parseFloat(this.computed_style.paddingBottom);
-            this.clip_rect.top +=       pd_t;
-            this.clip_rect.left +=      pd_l
-            this.clip_rect.width -=     pd_l + pd_r;
-            this.clip_rect.height -=    pd_t + pd_b;
+            this.viewport_i.top +=      pd_t;
+            this.viewport_i.left +=     pd_l
+            this.viewport_i.width -=    pd_l + pd_r;
+            this.viewport_i.height -=   pd_t + pd_b;
         }
 
         this.update_position();
@@ -245,7 +245,7 @@ export class TextAreaOverlay extends AbstractInputInterface
         if (this.t_highlight != null)
             this.t_highlight.delete();
 
-        this.t_highlight = new DOMRectHighlight(document, this.clip_rect, 2);
+        this.t_highlight = new DOMRectHighlight(document, this.viewport_i, 2);
         this.t_highlight.color = [0, 255, 0, 1.0];
     }
 
