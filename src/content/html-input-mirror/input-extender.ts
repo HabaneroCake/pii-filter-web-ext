@@ -108,14 +108,14 @@ const re_ignore_css_props: RegExp = new RegExp('(' + [
     'width',
     'height'
 ].join('|') + ')', 'i')
-console.log(re_ignore_css_props);
-
 
 export class TextAreaOverlay extends AbstractInputInterface
 {
     protected text_node:                Text;
     protected computed_style:           CSSStyleDeclaration;
+    protected rect:                     Rect = new Rect();
     protected viewport:                 Rect = new Rect();
+    protected clip_rect:            Rect = new Rect();
 
     protected readonly scrollbar_width: number;
     protected scroll_offset:            [number, number] = [0, 0]
@@ -135,7 +135,7 @@ export class TextAreaOverlay extends AbstractInputInterface
         // initial styling
         this.div.setAttribute('aria-hidden', 'true')
         this.div.setAttribute('style', `
-            position: fixed;
+            position: absolute;
             height: 0;
             width: 0;
             top: 0;
@@ -160,10 +160,10 @@ export class TextAreaOverlay extends AbstractInputInterface
         // sync scroll
         const sync_scroll = () => {
             this.scroll_offset = [
-                this.settings.element.scrollTop,
-                this.settings.element.scrollLeft
+                this.settings.element.scrollLeft,
+                this.settings.element.scrollTop
             ];
-            // TODO: callback
+            this.update_layout();
         };
         this.bindings.bind_event(this.settings.element, 'scroll', (event: Event) => {
             sync_scroll()
@@ -193,40 +193,61 @@ export class TextAreaOverlay extends AbstractInputInterface
         super.delete();
     }
 
+
+    protected update_layout()
+    {
+        const t_rect =  Rect.from_rect(this.rect);
+        //! not sure if this should stay like this and recalc, think not, only offset of rects container should be adjusted
+        t_rect.left -=  this.scroll_offset[0];
+        t_rect.top -=   this.scroll_offset[1];
+        t_rect.apply_position_to_element(this.div, true, this.settings.element);
+    }
+    
     public on_rect_changed(rect: Rect)
     {
-        rect.apply_position_to_element(this.div, true, this.settings.element);
-        // this.div.style.left =    `${this.settings.element.clientLeft}px`;
-        // this.div.style.top =     `${this.top_absolute + (inner_element ? inner_element.clientTop : 0)}px`;
+        this.rect =                     rect;
+        this.viewport =                 Rect.from_rect(this.rect);
+        this.viewport.left +=           this.settings.element.clientLeft;
+        this.viewport.top +=            this.settings.element.clientTop;
 
-        // this.viewport =         Rect.from_rect(rect);
-        // this.viewport.left +=   this.settings.element.clientLeft;
-        // this.viewport.top +=    this.settings.element.clientTop;
-        // this.viewport.width =   this.settings.element.clientWidth;
-        // this.viewport.height =  this.settings.element.clientHeight;
+        const overflowing_y: boolean =  this.settings.element.scrollHeight != this.settings.element.clientHeight;
+        this.viewport.width =           this.rect.width - (
+            (overflowing_y ? this.scrollbar_width : 0) +
+            parseFloat(this.computed_style.borderLeftWidth) +
+            parseFloat(this.computed_style.borderRightWidth)
+        );
 
-        const overflowing_y: boolean = this.settings.element.scrollHeight != this.settings.element.clientHeight;
-        this.div.style.width = `${
-            rect.width - (
-                (overflowing_y ? this.scrollbar_width : 0) +
-                parseFloat(this.computed_style.borderLeftWidth) +
-                parseFloat(this.computed_style.borderRightWidth)
-            )
-        }px`;
-        const overflowing_x: boolean = this.settings.element.scrollWidth != this.settings.element.clientWidth;
-        this.div.style.height = `${
-            rect.height - (
-                (overflowing_x ? this.scrollbar_width : 0) +
-                parseFloat(this.computed_style.borderTopWidth) +
-                parseFloat(this.computed_style.borderBottomWidth)
-            )
-        }px`;
+        const overflowing_x: boolean =  this.settings.element.scrollWidth != this.settings.element.clientWidth;
+        this.viewport.height =          this.rect.height - (
+            (overflowing_x ? this.scrollbar_width : 0) +
+            parseFloat(this.computed_style.borderTopWidth) +
+            parseFloat(this.computed_style.borderBottomWidth)
+        );
 
-        // if (this.t_highlight != null)
-        //     this.t_highlight.delete();
+        this.div.style.width =          `${this.viewport.width}px`;
+        this.div.style.height =         `${this.viewport.height}px`;
 
-        // this.t_highlight = new DOMRectHighlight(document, this.viewport, 2);
-        // this.t_highlight.color = [0, 255, 0, 1.0];
+        this.clip_rect =                Rect.from_rect(this.viewport);
+        if (true) //! TODO: check if firefox
+        {
+            const pd_l:     number =    parseFloat(this.computed_style.paddingLeft);
+            const pd_t:     number =    parseFloat(this.computed_style.paddingTop);
+            const pd_r:     number =    parseFloat(this.computed_style.paddingRight);
+            const pd_b:     number =    parseFloat(this.computed_style.paddingBottom);
+            this.clip_rect.top +=       pd_t;
+            this.clip_rect.left +=      pd_l
+            this.clip_rect.width -=     pd_l + pd_r;
+            this.clip_rect.height -=    pd_t + pd_b;
+        }
+
+        this.update_layout();
+
+        // TEMP
+        if (this.t_highlight != null)
+            this.t_highlight.delete();
+
+        this.t_highlight = new DOMRectHighlight(document, this.clip_rect, 2);
+        this.t_highlight.color = [0, 255, 0, 1.0];
     }
 
     public on_style_changed(changes: Map<string, string>, all: Map<string, string>)
