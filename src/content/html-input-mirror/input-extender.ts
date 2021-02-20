@@ -64,24 +64,21 @@ export function copy_event(event: Event, new_target?: HTMLElement): Event
 
 function get_scrollbar_width(document: Document): number
 {
-    // Creating invisible container
-    const outer = document.createElement('div');
-    outer.style.visibility = 'hidden';
-    outer.style.overflow = 'scroll'; // forcing scrollbar to appear
-    // outer.style.msOverflowStyle = 'scrollbar'; // needed for WinJS apps
+    // invisible container
+    const outer: HTMLDivElement =   document.createElement('div');
+    outer.style.visibility =        'hidden';
+    outer.style.overflow =          'scroll';
+    //? should this be on a shadow?
     document.body.appendChild(outer);
-
-    // Creating inner element and placing it in the container
-    const inner = document.createElement('div');
+    //inner element
+    const inner: HTMLDivElement =   document.createElement('div');
     outer.appendChild(inner);
+    // calc width
+    const width: number =           (outer.getBoundingClientRect().width - inner.getBoundingClientRect().width);
+    // remove element
+    outer.remove();
 
-    // Calculating difference between container's full width and the child width
-    const scrollbar_width = (outer.getBoundingClientRect().width - inner.getBoundingClientRect().width);
-
-    // Removing temporary elements from the DOM
-    outer.parentNode.removeChild(outer);
-
-    return scrollbar_width;
+    return width;
 }
 
 const re_ignore_css_props: RegExp = new RegExp('(' + [
@@ -143,6 +140,7 @@ export class TextAreaOverlay extends AbstractInputInterface
             color: red;
             overflow: hidden;
             mouse-events: none;
+            // visibility: hidden;
         `)
 
         // watch outside changes
