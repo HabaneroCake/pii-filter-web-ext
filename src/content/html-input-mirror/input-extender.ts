@@ -6,7 +6,7 @@ import { DOMRectHighlight } from '../dom-rect-highlight';
 
 // currently only works for 1 input at a time
 
-
+// how will these work together?
 
 export interface InputInterfaceSettings
 {
@@ -192,7 +192,7 @@ export class TextAreaOverlay extends AbstractInputInterface
     }
 
 
-    protected update_layout()
+    protected update_position()
     {
         const t_rect =  Rect.from_rect(this.rect);
         //! not sure if this should stay like this and recalc, think not, only offset of rects container should be adjusted
@@ -238,7 +238,7 @@ export class TextAreaOverlay extends AbstractInputInterface
             this.clip_rect.height -=    pd_t + pd_b;
         }
 
-        this.update_layout();
+        this.update_position();
 
         // TEMP
         if (this.t_highlight != null)
