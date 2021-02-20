@@ -201,6 +201,7 @@ export class TextAreaOverlay extends AbstractInputInterface
         t_rect.apply_position_to_element(this.div, true, this.settings.element);
     }
     
+    // TODO: separate out size_changed and position_changed
     public on_rect_changed(rect: Rect)
     {
         this.rect =                     rect;
