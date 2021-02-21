@@ -25,7 +25,7 @@ export class BoxHighlightRange implements DocHighlight
     {
         this.color = c;
     }
-    
+
     render(highlighter: Highlighter, document: Document): void
     {
 
@@ -51,7 +51,6 @@ export class BoxHighlightRange implements DocHighlight
             );
         }
         
-        console.log('rnew:', div_rects_new)
         const result = calc_array_diff<DivRect>(
             div_rects_new,
             this.div_rects,

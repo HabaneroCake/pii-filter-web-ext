@@ -138,7 +138,7 @@ export class RangeHighlighter implements Highlighter
     {
         // jsdiff
         // diff text and adjust / remove ranges (first test without this) and plan how to tackle it
-        // this.render(); //?
+        this.render(); //?
     }
 
     protected update_rect()
@@ -147,7 +147,20 @@ export class RangeHighlighter implements Highlighter
         {
             this.text_entry_source.viewport_i.apply_to_element(this.viewport, true, true);
             // this.text_entry_source.viewport_o.apply_position_to_element(this.highlights, true);
+            this.update_scroll();
+        }
+    }
+    update_position(): void
+    {
+        console.log('position');
+        this.update_rect();
+    }
+    update_scroll(): void
+    {
+        if (this.text_entry_source != null)
+        {
             const [scroll_x, scroll_y] = this.text_entry_source.scroll;
+            // TODO: clean up and use padding instead? or 
             this.highlights.style.left = `${
                 -(scroll_x+this.text_entry_source.viewport_i.left-this.text_entry_source.viewport_o.left)
             }px`;
@@ -155,16 +168,6 @@ export class RangeHighlighter implements Highlighter
                 -(scroll_y+this.text_entry_source.viewport_i.top-this.text_entry_source.viewport_o.top)
             }px`;
         }
-    }
-    update_position(): void
-    {
-        console.log('position');
-        this.update_rect()
-    }
-    update_scroll(): void
-    {
-        console.log('scroll');
-        this.update_rect()
     }
     update_layout(): void
     {
@@ -179,7 +182,11 @@ export class RangeHighlighter implements Highlighter
         if (this.text_entry_source != null)
         {
             for (const range of this.ranges)
+            {
+                range.highlight.document_range.setStart(range.highlight.document_range.startContainer, range.start);
+                range.highlight.document_range.setEnd(range.highlight.document_range.endContainer, range.end);
                 range.highlight.render(this, this.text_entry_source.document);
+            }
         }
     }
 };
