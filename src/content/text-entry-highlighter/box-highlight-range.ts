@@ -1,15 +1,22 @@
 import {
     Highlighter,
-    HighlightRange
 } from './highlighter'
 
 import { calc_array_diff } from '../../common/array-diff';
+import { DocHighlight } from './highlighter';
+import { Rect } from '../../common/rect';
 
-export class BoxHighlightRange implements HighlightRange
+
+interface DivRect
 {
-    protected rects:    Array<DOMRect> =        new Array<DOMRect>();
-    protected elements: Array<HTMLDivElement> = new Array<HTMLDivElement>();
-    protected _color:   [number, number, number, number];
+    rect: Rect;
+    div: HTMLDivElement;
+};
+
+export class BoxHighlightRange implements DocHighlight
+{
+    protected div_rects:    Array<DivRect> = new Array<DivRect>();
+    protected _color:       [number, number, number, number];
 
     constructor(
         public document_range: Range,
@@ -21,24 +28,46 @@ export class BoxHighlightRange implements HighlightRange
     
     render(highlighter: Highlighter, document: Document): void
     {
-        const rects_new: Array<DOMRect> = Array.from(this.document_range.getClientRects());
-        const result = calc_array_diff<DOMRect>(
-            rects_new,
-            this.rects,
-            (lhs: DOMRect, rhs: DOMRect): boolean => {
-                return lhs.left == rhs.left &&
-                       lhs.top == rhs.top &&
-                       lhs.width == rhs.width &&
-                       lhs.height == rhs.height;
+
+        const dom_rects: DOMRectList = this.document_range.getClientRects();
+        const div_rects_new: Array<DivRect> = new Array<DivRect>();
+        for (let i = 0; i < dom_rects.length; ++i)
+        {
+            const rect: DOMRect = dom_rects.item(i);
+            div_rects_new.push(
+                {
+                    rect: new Rect(
+                        rect.left,
+                        rect.top,
+                        rect.width,
+                        rect.height,
+                        rect.width,
+                        rect.height,
+                        window.scrollX,
+                        window.scrollY,
+                    ),
+                    div: null
+                }
+            );
+        }
+        
+        console.log('rnew:', div_rects_new)
+        const result = calc_array_diff<DivRect>(
+            div_rects_new,
+            this.div_rects,
+            (lhs: DivRect, rhs: DivRect): boolean => {
+                return lhs.rect.left_absolute == rhs.rect.left_absolute &&
+                       lhs.rect.top_absolute == rhs.rect.top_absolute &&
+                       lhs.rect.width == rhs.rect.width &&
+                       lhs.rect.height == rhs.rect.height;
             }
         );
         
         for (const removed of result.removed)
         {
-            const index: number = this.rects.indexOf(removed);
-            this.rects.splice(index, 1)
-            this.elements[index].remove();
-            this.elements.splice(index, 1)
+            const index: number = this.div_rects.indexOf(removed);
+            this.div_rects[index].div.remove();
+            this.div_rects.splice(index, 1)
         }
 
         const [r, g, b, a] = this._color;
@@ -46,18 +75,17 @@ export class BoxHighlightRange implements HighlightRange
         for (const added of result.added)
         {
             const element: HTMLDivElement = document.createElement('div');
-
             element.setAttribute('style', `
                 position: absolute;
+                display: block;
                 background-color: ${c_string};
-                left:   ${added.left}px;
-                top:    ${added.top}px;
-                width:  ${added.width}px;
-                height: ${added.height}px;
+                left:   ${added.rect.left_absolute}px;
+                top:    ${added.rect.top_absolute}px;
+                width:  ${added.rect.width}px;
+                height: ${added.rect.height}px;
             `);
-
-            this.rects.push(added);
-            this.elements.push(element);
+            added.div = element;
+            this.div_rects.push(added);
             highlighter.highlights.appendChild(element);
         }
     }
@@ -67,16 +95,15 @@ export class BoxHighlightRange implements HighlightRange
         this._color = c;
         const [r, g, b, a] = this._color;
         const c_string: string = `rgba(${r},${g},${b},${a})`;
-        for (const element of this.elements)
-            element.style.backgroundColor = c_string;
+        for (const element of this.div_rects)
+            element.div.style.backgroundColor = c_string;
     }
     
     remove(): void
     {
-        for (const element of this.elements)
-            element.remove();
+        for (const div_rect of this.div_rects)
+            div_rect.div.remove();
 
-        this.rects =    new Array<DOMRect>();
-        this.elements = new Array<HTMLDivElement>();
+        this.div_rects = new Array<DivRect>();
     }
 };

@@ -98,7 +98,7 @@ export class Rect
             element.scrollHeight
         );
     }
-    static from_rect(rect: Rect): Rect
+    static copy(rect: Rect): Rect
     {
         let new_rect: Rect = new Rect();
         for (let key in rect)

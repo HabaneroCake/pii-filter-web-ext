@@ -5,11 +5,11 @@ export function calc_array_diff<T>(
 ): {added: Array<T>, removed: Array<T>}
 {
     return {
-        added: arr_old.filter(
-            (old_element: T) => !arr_new.some((new_element: T) => equal(new_element, old_element))
-        ),
-        removed: arr_new.filter(
+        added: arr_new.filter(
             (new_element: T) => !arr_old.some((old_element: T) => equal(new_element, old_element))
+        ),
+        removed: arr_old.filter(
+            (old_element: T) => !arr_new.some((new_element: T) => equal(new_element, old_element))
         ),
     };
 };

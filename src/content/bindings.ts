@@ -34,7 +34,7 @@ export class Bindings
     /**
      * removes all listeners and cleans up 
      */
-    public delete()
+    public remove()
     {
         for (let unbind_call of this.unbind_calls)
             unbind_call();

@@ -23,7 +23,7 @@ export class ShadowDom
     /**
      * removes previous DOM modifications and returns null
      */
-    public delete()
+    public remove()
     {
         this.root_div.remove();
     }
@@ -58,9 +58,9 @@ export class ShadowDomDiv extends ShadowDom
     /**
      * removes previous DOM modifications and returns null
      */
-    public delete()
+    public remove()
     {
         this.root_div.remove();
-        super.delete();
+        super.remove();
     }
 };

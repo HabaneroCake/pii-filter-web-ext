@@ -1,22 +1,22 @@
-import { Rect } from '../../common/rect';
-import { Bindings } from '../bindings';
-import { ShadowDom } from '../shadow-dom';
+import { Bindings } from './bindings';
+import { Rect } from '../common/rect';
 
 class StyleCalculator
 {
-    protected shadow_dom:       ShadowDom;
     public default_style:       CSSStyleDeclaration;
     public comp_style:          CSSStyleDeclaration;
+    protected el_div:           HTMLDivElement;
     constructor(
         document: Document,
+        shadow: ShadowRoot,
         element: HTMLElement
     )
     {
-        this.shadow_dom = new ShadowDom(document, document.body.firstElementChild);
-        this.shadow_dom.root_div.style.display = 'none';
-
+        this.el_div = document.createElement('div');
+        this.el_div.setAttribute('style', 'display: none');
         const element_base: HTMLElement = document.createElement(element.tagName);
-        this.shadow_dom.shadow.appendChild(element_base);
+        this.el_div.appendChild(element_base);
+        shadow.appendChild(this.el_div);
 
         this.default_style =    window.getComputedStyle(element_base);
         this.comp_style =       window.getComputedStyle(element);
@@ -36,9 +36,9 @@ class StyleCalculator
         return results;
     }
 
-    public delete()
+    public remove()
     {
-        this.shadow_dom.remove();
+        this.el_div.remove();
     }
 };
 
@@ -50,13 +50,14 @@ export class ElementObserver
 
     constructor(
         document: Document,
+        shadow: ShadowRoot,
         input_element: HTMLElement,
         polling_interval: number, // for uncaught changes
         on_rect_changed: (rect: Rect) => void,
         on_style_changed: (changed: Map<string, string>, all: Map<string, string>) => void,
     )
     {
-        this.style_calculator = new StyleCalculator(document, input_element);
+        this.style_calculator = new StyleCalculator(document, shadow, input_element);
         // watch for style change
         const resize_attrs: Array<string> = ['width', 'height', 'inline-size', 'block-size'];
         let old_css: Map<string, string> = new Map<string, string>();
@@ -200,10 +201,10 @@ export class ElementObserver
         rect_polling_update();
     }
 
-    public delete()
+    public remove()
     {
         this.active = false;
-        this.style_calculator.delete();
+        this.style_calculator.remove();
         this.bindings.remove();
     }
 };

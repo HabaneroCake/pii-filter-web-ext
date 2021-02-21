@@ -40,11 +40,11 @@ export abstract class AbstractInputInterface extends ShadowDomDiv
         );
     }
 
-    public delete()
+    public remove()
     {
-        this.bindings.delete();
+        this.bindings.remove();
         this.element_observer.delete();
-        super.delete();
+        super.remove();
     }
 
     public abstract on_rect_changed(rect: Rect): void;
@@ -52,15 +52,15 @@ export abstract class AbstractInputInterface extends ShadowDomDiv
     public abstract contains(element: HTMLElement): boolean;
 };
 
-export function copy_event(event: Event, new_target?: HTMLElement): Event
-{
-    let event_dict: object = {};
-    for (let key in event)
-        Reflect.set(event_dict, key, Reflect.get(event, key));
-    if (new_target != null && Reflect.has(event, 'target'))
-        Reflect.set(event_dict, 'target', new_target);
-    return new Event(event.type, event_dict);
-}
+// export function copy_event(event: Event, new_target?: HTMLElement): Event
+// {
+//     let event_dict: object = {};
+//     for (let key in event)
+//         Reflect.set(event_dict, key, Reflect.get(event, key));
+//     if (new_target != null && Reflect.has(event, 'target'))
+//         Reflect.set(event_dict, 'target', new_target);
+//     return new Event(event.type, event_dict);
+// }
 
 function get_scrollbar_width(document: Document): number
 {
@@ -183,18 +183,18 @@ export class TextAreaOverlay extends AbstractInputInterface
             });
     };
 
-    public delete()
+    public remove()
     {
         if (this.t_highlight != null)
-            this.t_highlight.delete();
+            this.t_highlight.remove();
 
-        super.delete();
+        super.remove();
     }
 
 
     protected update_position()
     {
-        const t_rect =  Rect.from_rect(this.rect);
+        const t_rect =  Rect.copy(this.rect);
         //! not sure if this should stay like this and recalc, think not, only offset of rects container should be adjusted
         t_rect.left -=  this.scroll_offset[0];
         t_rect.top -=   this.scroll_offset[1];
@@ -205,7 +205,7 @@ export class TextAreaOverlay extends AbstractInputInterface
     public on_rect_changed(rect: Rect)
     {
         this.rect =                     rect;
-        this.viewport_o =               Rect.from_rect(this.rect);
+        this.viewport_o =               Rect.copy(this.rect);
         this.viewport_o.left +=         this.settings.element.clientLeft;
         this.viewport_o.top +=          this.settings.element.clientTop;
 
@@ -226,7 +226,7 @@ export class TextAreaOverlay extends AbstractInputInterface
         this.div.style.width =          `${this.viewport_o.width}px`;
         this.div.style.height =         `${this.viewport_o.height}px`;
 
-        this.viewport_i =               Rect.from_rect(this.viewport_o);
+        this.viewport_i =               Rect.copy(this.viewport_o);
         if (true) //! TODO: check if firefox
         {
             const pd_l:     number =    parseFloat(this.computed_style.paddingLeft);
@@ -243,7 +243,7 @@ export class TextAreaOverlay extends AbstractInputInterface
 
         // TEMP
         if (this.t_highlight != null)
-            this.t_highlight.delete();
+            this.t_highlight.remove();
 
         this.t_highlight = new DOMRectHighlight(document, this.viewport_i, 2);
         this.t_highlight.color = [0, 255, 0, 1.0];
@@ -320,7 +320,7 @@ export class PIIFilterInputExtender
 
             // delete old interface
             if (this.input_interface != null)
-                this.input_interface.delete();
+                this.input_interface.remove();
 
             const settings: InputInterfaceSettings = {
                 document:           document,
@@ -361,14 +361,14 @@ export class PIIFilterInputExtender
         if (this.input_interface != null)
         {
             console.log('released');
-            this.input_interface.delete();
+            this.input_interface.remove();
             this.input_interface = null;
         }
     }
 
     public delete()
     {
-        this.bindings.delete();
+        this.bindings.remove();
     }
 };
 
