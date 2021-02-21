@@ -1,7 +1,7 @@
 import { AbstractHighlightTextEntrySource } from '../abstract-highlight-text-entry-source';
 import { Rect } from '../../../common/rect';
 import { DOMRectHighlight } from '../../../../../underlines/test';
-import { HighlightContentParser, Highlighter } from '../highlighter';
+import { HighlightContentParser, Highlighter, HighlightTextEntryMutationType, HighlightTextEntryMutation } from '../highlighter';
 
 function get_scrollbar_width(document: Document): number
 {
@@ -54,6 +54,7 @@ export class HighlightTextAreaSource extends AbstractHighlightTextEntrySource
     protected mirror:                   HTMLDivElement;
 
     protected scrollbar_width:          number;
+    protected selection:                [number, number] = [0, 0];
 
     // protected t_highlight:              DOMRectHighlight;
     constructor(
@@ -71,8 +72,12 @@ export class HighlightTextAreaSource extends AbstractHighlightTextEntrySource
 
         const text_area_element: HTMLTextAreaElement = (this.element as HTMLTextAreaElement);
 
-        this.value = text_area_element.value;
-        
+        this.value =        text_area_element.value;
+        this.selection =    [
+            Math.min(text_area_element.selectionStart, text_area_element.selectionEnd),
+            Math.max(text_area_element.selectionStart, text_area_element.selectionEnd),
+        ];
+
         // Get the scrollbar width
         this.scrollbar_width =  get_scrollbar_width(this.document);        
         this.text_node =        this.document.createTextNode(text_area_element.value);
@@ -93,18 +98,106 @@ export class HighlightTextAreaSource extends AbstractHighlightTextEntrySource
             visibility: hidden;
         `)
 
-        // watch outside changes
-        const element_input_callback = (event: Event) => {
+        // bind selection
+        for (const event_name of ['mouseup', 'keyup', 'selectionchange', 'select'])
+        {
+            this.bindings.bind_event(this.element, event_name, (event: Event) => {
+                this.selection =    [
+                    Math.min(text_area_element.selectionStart, text_area_element.selectionEnd),
+                    Math.max(text_area_element.selectionStart, text_area_element.selectionEnd),
+                ];
+            });
+        }
+
+        this.bindings.bind_event(this.element, 'change', (event: Event) => {
             const new_text: string = text_area_element.value;
             this.text_node.nodeValue = new_text;
             this.value = new_text;
-            this.content_parser.update_content();
-            this.highlighter.update_content();
-        };
+            const mutations: Array<HighlightTextEntryMutation> = [{
+                type: HighlightTextEntryMutationType.change,
+            }];
+            this.content_parser.update_content(mutations);
+            this.highlighter.update_content(mutations);
+        });
+
+        this.bindings.bind_event(this.element, 'input', (event: Event) => {
+            const input_event: InputEvent = event as InputEvent;
+            const old_text: string = this.value;
+            const new_text: string = text_area_element.value;
+            this.text_node.nodeValue = new_text;
+            this.value = new_text;
+            
+            const length_diff: number = new_text.length - old_text.length;
+            const length_diff_abs: number = Math.abs(length_diff);
+            const type = input_event.inputType.toLocaleLowerCase();
+            console.log(type, this.selection[0], length_diff);
+            let mutations: Array<HighlightTextEntryMutation> = [];
+            const replacing_selection: boolean = this.selection[0] != 
+                                                 this.selection[1];
+            if (replacing_selection)
+            {
+                mutations.push({
+                    type: HighlightTextEntryMutationType.remove,
+                    index: this.selection[0],
+                    length: this.selection[1] - this.selection[0]
+                });
+            }
+            if (type.includes('insert') && length_diff > 0)
+            {
+                // TODO check for all types and add correct logic here
+                mutations.push({
+                    type: HighlightTextEntryMutationType.insert,
+                    index: this.selection[0],
+                    length: length_diff_abs
+                });
+            }
+            else if (type.includes('delete') && length_diff < 0)
+            {
+                if (!replacing_selection)
+                {
+                    if (type.includes('backward'))
+                    {
+                        mutations.push({
+                            type: HighlightTextEntryMutationType.remove,
+                            index: this.selection[0] - length_diff_abs,
+                            length: length_diff_abs
+                        });
+                    }
+                    else
+                    {   // all other is considered forwards for now
+                        mutations.push({
+                            type: HighlightTextEntryMutationType.remove,
+                            index: this.selection[0],
+                            length: length_diff_abs
+                        });
+                    }
+                }
+            }
+            else
+            {
+                // requires diff
+                // or https://rawgit.com/w3c/input-events/v1/index.html#interface-InputEvent-Attributes and undo stack
+                mutations.push({
+                    type: HighlightTextEntryMutationType.change,
+                });
+            }
+            this.content_parser.update_content(mutations);
+            this.highlighter.update_content(mutations);
+        });
+
+        // watch outside changes
+        // const element_input_callback = (event: Event) => {
+        //     const new_text: string = text_area_element.value;
+        //     this.text_node.nodeValue = new_text;
+        //     this.value = new_text;
+            
+        //     this.content_parser.update_content();
+        //     this.highlighter.update_content();
+        // };
 
         // bind check if form or event changes textarea contents
-        for (let event_name of ['input', 'change'])
-            this.bindings.bind_event(this.element, event_name, element_input_callback);
+        // for (let event_name of ['input', 'change'])
+        //     this.bindings.bind_event(this.element, event_name, element_input_callback);
         
         // sync scroll
         const sync_scroll = () => {

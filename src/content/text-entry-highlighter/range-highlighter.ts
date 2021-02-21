@@ -3,10 +3,12 @@ import {
     HighlightTextEntrySource,
     HighlightRange,
     HighlightedRange,
-    DocHighlight
+    DocHighlight,
+    HighlightTextEntryMutationType
 } from './highlighter'
 
 import { calc_array_diff } from '../../common/array-diff';
+import { HighlightTextEntryMutation } from './highlighter';
 
 export class RangeHighlighter implements Highlighter
 {
@@ -134,11 +136,104 @@ export class RangeHighlighter implements Highlighter
             this.update_layout();
         }
     }
-    update_content(): void
+    update_content(mutations: Array<HighlightTextEntryMutation>): void
     {
-        // jsdiff
-        // diff text and adjust / remove ranges (first test without this) and plan how to tackle it
-        this.render(); //?
+        if (this.text_entry_source != null)
+        {
+            for (const mutation of mutations)
+            {
+                switch(mutation.type)
+                {
+                    case HighlightTextEntryMutationType.change:
+                    {
+                        // TODO: diff, for now just update all elements
+                        // another cheap solution would be to compare start strings and rm everything after first diff
+                        // also undo/redo etc.
+                        for (const range of this.ranges)
+                            range.highlight.update();
+                        break;
+                    }
+                    case HighlightTextEntryMutationType.insert:
+                    {
+                        const mutation_start: number = mutation.index;
+                        for (const range of this.ranges)
+                        {
+                            const range_start: number = range.highlight.current_range.start;
+                            const range_end: number = range.highlight.current_range.end;
+                            const range_within = mutation_start > range_start && mutation_start < range_end;
+
+                            if (range_within)
+                            {   //? should highlight grow like this?
+                                range.highlight.update(range_start, range_end + mutation.length);
+                            }
+                            else if (range_start >= mutation_start)
+                            {
+                                range.highlight.update(range_start + mutation.length, range_end + mutation.length);
+                            }
+                            else //! on replacing of selection this is called twice for some elements... fix?
+                                range.highlight.update();
+                        }
+                        break;
+                    }
+                    case HighlightTextEntryMutationType.remove:
+                    {
+                        const mutation_start: number = mutation.index;
+                        const mutation_end: number = mutation.index + mutation.length;
+                        this.ranges = this.ranges.filter((range: HighlightedRange, index: number,) =>
+                        {
+                            const range_start: number = range.highlight.current_range.start;
+                            const range_end: number = range.highlight.current_range.end;
+
+                            const start_contained = range_start >= mutation_start && range_start < mutation_end;
+                            const end_contained = range_end > mutation_start && range_end <= mutation_end;
+                            const range_within = mutation_start > range_start && mutation_end < range_end;
+                            // TODO: insert?
+                            if (start_contained && end_contained)
+                            {   // range needs to be removed
+                                range.highlight.remove();
+                                return false;
+                            }
+                            else if (start_contained)
+                            {   // range needs to be shortened
+                                range.highlight.update(
+                                    mutation_start,
+                                    range_end - mutation.length
+                                );
+                            }
+                            else if (end_contained)
+                            {   // range needs to be shortened
+                                range.highlight.update(
+                                    range_start,
+                                    mutation_start
+                                );
+                            }
+                            else if (range_within)
+                            {   // range needs to be shortened
+                                range.highlight.update(
+                                    range_start,
+                                    range_end - mutation.length
+                                );
+                            }
+                            else if (range_start >= mutation_end)
+                            {   // offset range
+                                range.highlight.update(
+                                    range_start - mutation.length,
+                                    range_end - mutation.length
+                                );
+                            }
+                            else
+                                range.highlight.update();
+                                
+                            return true;
+                        });
+                        console.log(this.ranges);
+                        break;
+                    }
+                    default: break;
+                }
+            }
+            this.render();
+        }
     }
 
     protected update_rect()
@@ -160,7 +255,7 @@ export class RangeHighlighter implements Highlighter
         if (this.text_entry_source != null)
         {
             const [scroll_x, scroll_y] = this.text_entry_source.scroll;
-            // TODO: clean up and use padding instead? or 
+            // TODO: clean up and use padding instead? or use abs pos differently
             this.highlights.style.left = `${
                 -(scroll_x+this.text_entry_source.viewport_i.left-this.text_entry_source.viewport_o.left)
             }px`;
@@ -182,11 +277,7 @@ export class RangeHighlighter implements Highlighter
         if (this.text_entry_source != null)
         {
             for (const range of this.ranges)
-            {
-                range.highlight.document_range.setStart(range.highlight.document_range.startContainer, range.start);
-                range.highlight.document_range.setEnd(range.highlight.document_range.endContainer, range.end);
                 range.highlight.render(this, this.text_entry_source.document);
-            }
         }
     }
 };

@@ -1,5 +1,5 @@
 import {
-    Highlighter,
+    Highlighter, HighlightRange,
 } from './highlighter'
 
 import { calc_array_diff } from '../../common/array-diff';
@@ -19,11 +19,31 @@ export class BoxHighlightRange implements DocHighlight
     protected _color:       [number, number, number, number];
 
     constructor(
+        public current_range: HighlightRange,
         public document_range: Range,
         c: [number, number, number, number] = [255, 0, 0, 0.5]
     )
     {
         this.color = c;
+    }
+    
+    update(
+        start: number=this.current_range.start,
+        end: number=this.current_range.end,
+        start_container: Node=this.document_range.endContainer,
+        end_container:Node=this.document_range.endContainer
+    ): void
+    {
+        this.current_range.start = start;
+        this.current_range.end = end;
+        this.document_range.setStart(
+            start_container,
+            start
+        );
+        this.document_range.setEnd(
+            end_container,
+            end
+        );
     }
 
     render(highlighter: Highlighter, document: Document): void

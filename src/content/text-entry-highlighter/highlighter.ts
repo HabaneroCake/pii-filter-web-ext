@@ -1,5 +1,18 @@
 import { Rect } from '../../common/rect';
 
+export enum HighlightTextEntryMutationType
+{
+    change,
+    insert,
+    remove
+};
+export interface HighlightTextEntryMutation
+{
+    type:       HighlightTextEntryMutationType;
+    index?:     number;
+    length?:    number;
+};
+
 export interface HighlightTextEntrySource
 {
     value:      string;
@@ -23,18 +36,19 @@ export interface HighlightTextEntrySource
 
     remove(): void;
 };
-
 export interface HighlightContentParser
 {
     set_highlighter(highlighter: Highlighter): void;
     set_text_entry_source(text_entry_source: HighlightTextEntrySource): void;
-    update_content(): void;
+    update_content(mutations: Array<HighlightTextEntryMutation>): void;
 };
 
 export interface DocHighlight
 {
-    document_range:     Range;
-    render(highlighter: Highlighter, document: Document): void;
+    current_range:                                          HighlightRange;
+    document_range:                                         Range;
+    update(start?: number, end?: number):                   void;
+    render(highlighter: Highlighter, document: Document):   void;
     remove(): void;
 };
 
@@ -46,7 +60,7 @@ export interface HighlightRange
 
 export interface HighlightedRange extends HighlightRange
 {
-    highlight:  DocHighlight;
+    highlight:      DocHighlight;
 }
 
 export interface Highlighter
@@ -72,7 +86,7 @@ export interface Highlighter
         ) => DocHighlight
     ): void;
 
-    update_content(): void;
+    update_content(mutations: Array<HighlightTextEntryMutation>): void;
     update_position(): void;
     update_scroll(): void;
     update_layout(): void;
