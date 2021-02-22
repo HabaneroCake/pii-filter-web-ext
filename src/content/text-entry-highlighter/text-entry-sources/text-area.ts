@@ -1,7 +1,6 @@
 import { AbstractHighlightTextEntrySource } from '../abstract-highlight-text-entry-source';
 import { Rect } from '../../../common/rect';
-import { DOMRectHighlight } from '../../../../../underlines/test';
-import { HighlightContentParser, Highlighter, HighlightTextEntryMutationType, HighlightTextEntryMutation } from '../highlighter';
+import { HighlightTextEntryMutationType, HighlightTextEntryMutation } from '../highlighter';
 
 function get_scrollbar_width(document: Document): number
 {
@@ -23,6 +22,8 @@ function get_scrollbar_width(document: Document): number
 }
 
 const re_ignore_css_props: RegExp = new RegExp('(' + [
+    'animation',
+    'transition',
     'margin',
     'margin-top',
     'margin-bottom',
@@ -56,7 +57,6 @@ export class HighlightTextAreaSource extends AbstractHighlightTextEntrySource
     protected scrollbar_width:          number;
     protected selection:                [number, number] = [0, 0];
 
-    // protected t_highlight:              DOMRectHighlight;
     constructor(
         element: HTMLElement,
         polling_interval: number
@@ -87,12 +87,12 @@ export class HighlightTextAreaSource extends AbstractHighlightTextEntrySource
         // initial styling
         this.mirror.setAttribute('aria-hidden', 'true')
         this.mirror.setAttribute('style', `
+            display: block;
             position: absolute;
             height: 0;
             width: 0;
             top: 0;
             height: 0;
-            color: red;
             overflow: hidden;
             mouse-events: none;
             visibility: hidden;
@@ -109,6 +109,22 @@ export class HighlightTextAreaSource extends AbstractHighlightTextEntrySource
             });
         }
 
+        const check_for_scroll_size_change = () =>
+        {
+            if (this.rect.scroll_width != this.element.scrollWidth ||
+                this.rect.scroll_height != this.element.scrollHeight)
+            {
+                let rect_copy = Rect.copy(this.rect);
+                rect_copy.scroll_width = this.element.scrollWidth;
+                rect_copy.scroll_height = this.element.scrollHeight;
+                this.on_rect_changed(
+                    rect_copy,
+                    false,
+                    true
+                );
+            }
+        }
+
         this.bindings.bind_event(this.element, 'change', (event: Event) => {
             const new_text: string = text_area_element.value;
             this.text_node.nodeValue = new_text;
@@ -118,6 +134,7 @@ export class HighlightTextAreaSource extends AbstractHighlightTextEntrySource
             }];
             this.content_parser.update_content(mutations);
             this.highlighter.update_content(mutations);
+            check_for_scroll_size_change();
         });
 
         this.bindings.bind_event(this.element, 'input', (event: Event) => {
@@ -134,6 +151,7 @@ export class HighlightTextAreaSource extends AbstractHighlightTextEntrySource
             let mutations: Array<HighlightTextEntryMutation> = [];
             const replacing_selection: boolean = this.selection[0] != 
                                                  this.selection[1];
+            // very basic input handling
             if (replacing_selection)
             {
                 mutations.push({
@@ -175,14 +193,16 @@ export class HighlightTextAreaSource extends AbstractHighlightTextEntrySource
             }
             else
             {
-                // requires diff
-                // or https://rawgit.com/w3c/input-events/v1/index.html#interface-InputEvent-Attributes and undo stack
+                // TODO:
+                // https://rawgit.com/w3c/input-events/v1/index.html#interface-InputEvent-Attributes and undo stack
+                // or diff
                 mutations.push({
                     type: HighlightTextEntryMutationType.change,
                 });
             }
             this.content_parser.update_content(mutations);
             this.highlighter.update_content(mutations);
+            check_for_scroll_size_change();
         });
 
         // watch outside changes
@@ -217,13 +237,17 @@ export class HighlightTextAreaSource extends AbstractHighlightTextEntrySource
     {
         // if (this.t_highlight != null)
         //     this.t_highlight.remove();
-
+        if (this.mirror != null)
+            this.mirror.remove();
+        if (this.text_node != null)
+            this.text_node.remove();
         super.remove();
     }
     
     on_rect_changed(rect: Rect, position_changed: boolean, size_changed: boolean)
     {
         this.rect =                     rect;
+
         this.viewport_o =               Rect.copy(this.rect);
         this.viewport_o.left +=         this.element.clientLeft;
         this.viewport_o.top +=          this.element.clientTop;
@@ -244,6 +268,12 @@ export class HighlightTextAreaSource extends AbstractHighlightTextEntrySource
 
         this.mirror.style.width =          `${this.viewport_o.width}px`;
         this.mirror.style.height =         `${this.viewport_o.height}px`;
+        
+        //?
+        this.mirror.style.paddingLeft =     this.computed_style.paddingLeft;
+        this.mirror.style.paddingTop =      this.computed_style.paddingTop;
+        this.mirror.style.paddingRight =    this.computed_style.paddingRight;
+        this.mirror.style.paddingBottom =   this.computed_style.paddingBottom;
 
         this.viewport_i =               Rect.copy(this.viewport_o);
         if (true) //! TODO: check if firefox
@@ -257,13 +287,6 @@ export class HighlightTextAreaSource extends AbstractHighlightTextEntrySource
             this.viewport_i.width -=    pd_l + pd_r;
             this.viewport_i.height -=   pd_t + pd_b;
         }
-
-        // // TEMP
-        // if (this.t_highlight != null)
-        //     this.t_highlight.remove();
-
-        // this.t_highlight = new DOMRectHighlight(document, this.viewport_i, 2);
-        // this.t_highlight.color = [0, 255, 0, 1.0];
 
         if (position_changed)
             this.highlighter.update_position();

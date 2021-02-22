@@ -75,15 +75,11 @@ export class ElementObserver
             let new_values: Map<string, string> = new Map<string, string>();
             for (let [key, value] of this.style_calculator.filter_defaults())
             {
-                // if (resize_attrs.indexOf(key) == -1)
-                // {
-                    if (!old_css.has(key) || value != old_css.get(key))
-                    {
-                        new_values.set(key, value);
-                        old_css.set(key, value);
-                    }
-                // }
-
+                if (!old_css.has(key) || value != old_css.get(key))
+                {
+                    new_values.set(key, value);
+                    old_css.set(key, value);
+                }
             }
             if (new_values.keys.length > 0)
             {

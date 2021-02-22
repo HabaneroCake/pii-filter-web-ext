@@ -2,7 +2,7 @@
     "manifest_version": 2,
     "name": "Personally Identifiable Information Filter (NL)",
     "description": "Notifies you if there is an excessive usage of PII in a text field.",
-    "version": "0.1",
+    "version": "0.0.1",
     "icons": {
         "48": "assets/logos/a/PIILogo.png",
         "96": "assets/logos/a/PIILogo@2x.png"
@@ -25,6 +25,6 @@
         "matches": ["<all_urls>"],
         "all_frames": true,
         "js": ["build/content.js"],
-        "run_at": "document_start"
+        "run_at": "document_end"
     }]
 }

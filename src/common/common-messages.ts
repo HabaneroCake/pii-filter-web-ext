@@ -1,3 +1,5 @@
+import { PIIClassification } from 'pii-filter';
+
 export interface ICommonMessage
 {
     readonly type: ICommonMessage.Type;
@@ -37,7 +39,8 @@ export namespace ICommonMessage
         public type: ICommonMessage.Type = ICommonMessage.Type.NOTIFY_PII;
         constructor(
             public severity_mapping: number,
-            public pii: Array<[Array<string>, number?, number?]>
+            public pii: ReadonlyArray<PIIClassification>,
+            public ignore_highlight: boolean
         )
         {
         }

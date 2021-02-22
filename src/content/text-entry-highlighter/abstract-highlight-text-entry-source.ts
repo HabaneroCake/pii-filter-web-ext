@@ -17,7 +17,6 @@ export abstract class AbstractHighlightTextEntrySource implements HighlightTextE
 
     protected bindings:         Bindings =              new Bindings();
     protected element_observer: ElementObserver;
-    protected root_div:         HTMLDivElement;
 
     constructor(
         protected element: HTMLElement,
@@ -52,7 +51,9 @@ export abstract class AbstractHighlightTextEntrySource implements HighlightTextE
                 );  
                 const size_changed: boolean = (
                     rect.width != last_rect.width ||
-                    rect.height != last_rect.height
+                    rect.height != last_rect.height ||
+                    rect.scroll_width != last_rect.scroll_width ||
+                    rect.scroll_height != last_rect.scroll_height
                 );
                 this.on_rect_changed(rect, pos_changed, size_changed);
                 last_rect = rect;

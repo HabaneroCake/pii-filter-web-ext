@@ -192,7 +192,6 @@ export class ElementObserver
             if (this.active)
             {
                 update_rect_from_bounding_client();
-                // TODO: style?
                 setTimeout(rect_polling_update, polling_interval);
             }
         };

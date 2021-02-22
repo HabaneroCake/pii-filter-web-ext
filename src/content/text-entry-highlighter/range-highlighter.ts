@@ -9,13 +9,21 @@ import {
 
 import { calc_array_diff } from '../../common/array-diff';
 import { HighlightTextEntryMutation } from './highlighter';
+import { Rect } from '../../common/rect';
+
+
+// import { DOMRectHighlight } from '../../../../../underlines/test';
 
 export class RangeHighlighter implements Highlighter
 {
     protected ranges:               Array<HighlightedRange> = new Array<HighlightedRange>();
     protected text_entry_source:    HighlightTextEntrySource;
     protected viewport:             HTMLDivElement;
+    protected highlights_viewport:  HTMLDivElement;
     highlights:                     HTMLDivElement;
+    highlights_rect_rel:                Rect = new Rect();
+
+    // protected t_highlight:              DOMRectHighlight;
 
     remove(): void
     {
@@ -23,10 +31,35 @@ export class RangeHighlighter implements Highlighter
         this.ranges = new Array<HighlightedRange>();
 
         if (this.viewport != null)
+        {
             this.viewport.remove();
+            this.viewport = null;
+        }
+
+        if (this.highlights_viewport != null)
+        {
+            this.highlights_viewport.remove();
+            this.highlights_viewport = null;
+        }
 
         if (this.highlights != null)
+        {
             this.highlights.remove();
+            this.highlights = null;
+        }
+    }
+    update_ranges(ranges: Array<HighlightRange>, render: boolean=true): void
+    {
+        for (const range of ranges)
+        {
+            const index: number = this.ranges.findIndex((value: HighlightedRange) => {
+                return value.start == range.start && value.end == range.end;
+            });
+            if (index > -1)
+                this.ranges[index].highlight.update_range(range);
+        }
+        if (render)
+            this.render();
     }
     set_ranges(
         ranges: Array<HighlightRange>,
@@ -46,14 +79,14 @@ export class RangeHighlighter implements Highlighter
             }
         );
 
-        console.log(this.ranges, ranges, result)
-
-        this.remove_ranges(result.removed);
-        this.add_ranges(result.added, make_highlight)
+        this.remove_ranges(result.removed, false);
+        this.add_ranges(result.added, make_highlight, false)
+        this.update_ranges(result.overlap, false);
+        this.render();
     }
-    remove_ranges(elements: Array<HighlightRange>): void
+    remove_ranges(ranges: Array<HighlightRange>, render: boolean=true): void
     {
-        for (const removed of elements)
+        for (const removed of ranges)
         {
             const index: number = (this.ranges as Array<HighlightRange>).indexOf(removed);
             if (index > -1)
@@ -63,17 +96,21 @@ export class RangeHighlighter implements Highlighter
                 this.ranges.splice(index, 1);
             }
         }
+        if (render)
+            this.render();
     }
     add_ranges(
         elements: Array<HighlightRange>,
         make_highlight: (
             raw_range: HighlightRange,
             doc_range: Range
-        ) => DocHighlight
+        ) => DocHighlight,
+        render: boolean=true
     ): void
     {
         if (this.text_entry_source != null)
         {
+            const text_len: number = this.text_entry_source.value.length;
             let last_insert_index:  number;
             let last_element:       HighlightRange;
             if (elements.length > 0)
@@ -81,6 +118,14 @@ export class RangeHighlighter implements Highlighter
                 // insert in sorted order
                 for (const added of elements)
                 {
+                    // skip invalid ranges
+                    if (added.start < 0 ||
+                        added.end < 0 ||
+                        added.end < added.start ||
+                        added.start >= text_len ||
+                        added.end > text_len)
+                        continue;
+
                     let i: number = (last_element != null && last_element.start <= added.start) ? last_insert_index : 0;
                     let insert_index: number;
                     for (i; i < this.ranges.length; ++i)
@@ -105,7 +150,8 @@ export class RangeHighlighter implements Highlighter
                     else
                         this.ranges.push(highlighted_range);
                 }
-                this.render();
+                if (render)
+                    this.render();
             }
         }
     }
@@ -116,21 +162,34 @@ export class RangeHighlighter implements Highlighter
 
         if (this.text_entry_source != null)
         {
-            this.viewport =     this.text_entry_source.document.createElement('div');
-            this.highlights =   this.text_entry_source.document.createElement('div');
+            this.viewport =                 this.text_entry_source.document.createElement('div');
+            this.highlights_viewport =      this.text_entry_source.document.createElement('div');
+            this.highlights =               this.text_entry_source.document.createElement('div');
 
             this.viewport.setAttribute('style', `
+                display: block;
                 position: absolute;
                 overflow: hidden;
+                visibility: hidden;
+                pointer-events: none;
+            `);
+            this.highlights_viewport.setAttribute('style', `
+                display: block;
+                position: absolute;
+                overflow: hidden;
+                visibility: hidden;
                 pointer-events: none;
             `);
             this.highlights.setAttribute('style', `
+                display: block;
                 position: absolute;
                 overflow: visible;
+                visibility: visible;
                 pointer-events: none;
             `);
 
-            this.viewport.appendChild(this.highlights);
+            this.highlights_viewport.appendChild(this.highlights);
+            this.viewport.appendChild(this.highlights_viewport);
             this.text_entry_source.shadow.appendChild(this.viewport);
             this.update_scroll();
             this.update_layout();
@@ -150,7 +209,7 @@ export class RangeHighlighter implements Highlighter
                         // another cheap solution would be to compare start strings and rm everything after first diff
                         // also undo/redo etc.
                         for (const range of this.ranges)
-                            range.highlight.update();
+                            range.highlight.adjust_range();
                         break;
                     }
                     case HighlightTextEntryMutationType.insert:
@@ -164,14 +223,14 @@ export class RangeHighlighter implements Highlighter
 
                             if (range_within)
                             {   //? should highlight grow like this?
-                                range.highlight.update(range_start, range_end + mutation.length);
+                                range.highlight.adjust_range(range_start, range_end + mutation.length);
                             }
                             else if (range_start >= mutation_start)
                             {
-                                range.highlight.update(range_start + mutation.length, range_end + mutation.length);
+                                range.highlight.adjust_range(range_start + mutation.length, range_end + mutation.length);
                             }
                             else //! on replacing of selection this is called twice for some elements... fix?
-                                range.highlight.update();
+                                range.highlight.adjust_range();
                         }
                         break;
                     }
@@ -195,34 +254,34 @@ export class RangeHighlighter implements Highlighter
                             }
                             else if (start_contained)
                             {   // range needs to be shortened
-                                range.highlight.update(
+                                range.highlight.adjust_range(
                                     mutation_start,
                                     range_end - mutation.length
                                 );
                             }
                             else if (end_contained)
                             {   // range needs to be shortened
-                                range.highlight.update(
+                                range.highlight.adjust_range(
                                     range_start,
                                     mutation_start
                                 );
                             }
                             else if (range_within)
                             {   // range needs to be shortened
-                                range.highlight.update(
+                                range.highlight.adjust_range(
                                     range_start,
                                     range_end - mutation.length
                                 );
                             }
                             else if (range_start >= mutation_end)
                             {   // offset range
-                                range.highlight.update(
+                                range.highlight.adjust_range(
                                     range_start - mutation.length,
                                     range_end - mutation.length
                                 );
                             }
                             else
-                                range.highlight.update();
+                                range.highlight.adjust_range();
                                 
                             return true;
                         });
@@ -239,15 +298,36 @@ export class RangeHighlighter implements Highlighter
     protected update_rect()
     {
         if (this.text_entry_source != null)
-        {
-            this.text_entry_source.viewport_i.apply_to_element(this.viewport, true, true);
+        {            
+            this.text_entry_source.viewport_o.apply_to_element(this.viewport, true, true);
+            const pd_left: number = this.text_entry_source.viewport_i.left - this.text_entry_source.viewport_o.left;
+            const pd_top: number = this.text_entry_source.viewport_i.top - this.text_entry_source.viewport_o.top;
+            const width_i: number = this.text_entry_source.viewport_i.width;
+            const height_i: number = this.text_entry_source.viewport_i.height;
+
+            this.highlights_rect_rel.left = pd_left;
+            this.highlights_rect_rel.top = pd_top;
+            this.highlights_rect_rel.width = width_i;
+            this.highlights_rect_rel.height = height_i;
+
+            this.highlights_viewport.style.left =   `${pd_left}px`;
+            this.highlights_viewport.style.top =    `${pd_top}px`;
+            this.highlights_viewport.style.width =  `${width_i}px`;
+            this.highlights_viewport.style.height = `${height_i}px`;
+
+            // this.text_entry_source.viewport_i.apply_to_element(this.highlights_viewport, true, true);
+            this.highlights_viewport.style.backgroundColor = 'rgba(0, 255, 0, 0.4)';
+            // if (this.t_highlight != null)
+            //     this.t_highlight.remove();
+
+            // this.t_highlight = new DOMRectHighlight(document, this.text_entry_source.viewport_i, 2);
+            // this.t_highlight.color = [0, 255, 0, 1.0];
             // this.text_entry_source.viewport_o.apply_position_to_element(this.highlights, true);
             this.update_scroll();
         }
     }
     update_position(): void
     {
-        console.log('position');
         this.update_rect();
     }
     update_scroll(): void
@@ -255,13 +335,8 @@ export class RangeHighlighter implements Highlighter
         if (this.text_entry_source != null)
         {
             const [scroll_x, scroll_y] = this.text_entry_source.scroll;
-            // TODO: clean up and use padding instead? or use abs pos differently
-            this.highlights.style.left = `${
-                -(scroll_x+this.text_entry_source.viewport_i.left-this.text_entry_source.viewport_o.left)
-            }px`;
-            this.highlights.style.top = `${ 
-                -(scroll_y+this.text_entry_source.viewport_i.top-this.text_entry_source.viewport_o.top)
-            }px`;
+            this.highlights.style.left = `${-scroll_x}px`;
+            this.highlights.style.top = `${-scroll_y}px`;
         }
     }
     update_layout(): void
@@ -277,7 +352,13 @@ export class RangeHighlighter implements Highlighter
         if (this.text_entry_source != null)
         {
             for (const range of this.ranges)
+            {
+                range.highlight.document_range = this.text_entry_source.get_range(
+                    range.highlight.current_range.start,
+                    range.highlight.current_range.end
+                )
                 range.highlight.render(this, this.text_entry_source.document);
+            }
         }
     }
 };

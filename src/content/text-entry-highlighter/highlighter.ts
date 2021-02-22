@@ -47,7 +47,8 @@ export interface DocHighlight
 {
     current_range:                                          HighlightRange;
     document_range:                                         Range;
-    update(start?: number, end?: number):                   void;
+    update_range(range: HighlightRange):                    void;
+    adjust_range(start?: number, end?: number):             void;
     render(highlighter: Highlighter, document: Document):   void;
     remove(): void;
 };
@@ -60,16 +61,18 @@ export interface HighlightRange
 
 export interface HighlightedRange extends HighlightRange
 {
-    highlight:      DocHighlight;
+    highlight:  DocHighlight;
 }
 
 export interface Highlighter
 {
-    highlights: HTMLDivElement;
+    highlights:         HTMLDivElement;
+    highlights_rect_rel:    Rect;
 
     remove(): void;
 
     set_text_entry_source(text_entry_source: HighlightTextEntrySource): void;
+    update_ranges(ranges: Array<HighlightRange>, render: boolean): void;
     set_ranges(
         ranges: Array<HighlightRange>,
         make_highlight: (
@@ -77,23 +80,20 @@ export interface Highlighter
             doc_range: Range
         ) => DocHighlight
     ): void;
-    remove_ranges(ranges: Array<HighlightRange>): void;
+    remove_ranges(ranges: Array<HighlightRange>, render: boolean): void;
     add_ranges(
         ranges: Array<HighlightRange>,
         make_highlight: (
             highlight_range: HighlightRange,
             doc_range: Range
-        ) => DocHighlight
+        ) => DocHighlight,
+        render: boolean
     ): void;
 
     update_content(mutations: Array<HighlightTextEntryMutation>): void;
     update_position(): void;
     update_scroll(): void;
     update_layout(): void;
-
-    // scroll(Width|Height) == oldScroll(Width|Height) && size_changed
-    // this could work if changes need to be above 1px or so before counting as vp instead of layout
-    // update_viewport(): void;
 
     render(): void;
 };

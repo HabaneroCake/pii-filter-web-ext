@@ -21,7 +21,7 @@ export class TextEntryHighlighter
         // create shadow
         this.root_div = this.document.createElement("div");
         this.shadow =  this.root_div.attachShadow({mode: 'open'});
-        document.body.firstElementChild.insertAdjacentElement('beforebegin', this.root_div);
+        document.body.lastElementChild.insertAdjacentElement('afterend', this.root_div);
 
         // catch focus
         this.bindings.bind_event(document, 'focusin', (event: Event) => {
@@ -31,7 +31,7 @@ export class TextEntryHighlighter
             if (this.source != null)
                 this.source.remove();
 
-            const polling_interval: number = 5000;
+            const polling_interval: number = 1500;
 
             const add_interface = (event: Event) => {
                 target_element.removeEventListener('mouseup', add_interface);
