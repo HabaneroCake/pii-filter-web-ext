@@ -260,38 +260,38 @@ export class HighlightContentEditableSource extends AbstractHighlightTextEntrySo
     }
     
     get_range(start_index: number, end_index: number): Range
-    {   // TODO: optimize
+    {   // TODO: re-implement
         let range: Range = this.document.createRange();
-        let t_range: Range = this.document.createRange();
-        let node: Node = this.element.firstChild;
-        let index_offset: number = 0;
+        // let t_range: Range = this.document.createRange();
+        // let node: Node = this.element.firstChild;
+        // let index_offset: number = 0;
 
-        const parse_nodes = (node: Node) =>
-        {
-            if (node.firstChild != null)
-                parse_nodes(node.firstChild);
-            else
-            {
-                t_range.selectNode(node);
-                const len: number = t_range.toString().length;
-                if (index_offset <= start_index && index_offset + len > start_index)
-                {
-                    range.setStart(node, start_index - index_offset);
-                    console.log('set start', node);
-                }
-                if (index_offset <= end_index && index_offset + len >= start_index)
-                {
-                    range.setEnd(node, end_index - index_offset);
-                    console.log('set end', node);
-                    return;
-                }
-                index_offset += len;
-            }
-            if (node.nextSibling != null)
-                parse_nodes(node.nextSibling);
-        }
-        parse_nodes(node);
-        console.log(range);
+        // const parse_nodes = (node: Node) =>
+        // {
+        //     if (node.firstChild != null)
+        //         parse_nodes(node.firstChild);
+        //     else
+        //     {
+        //         t_range.selectNode(node);
+        //         const len: number = t_range.toString().length;
+        //         if (index_offset <= start_index && index_offset + len > start_index)
+        //         {
+        //             range.setStart(node, start_index - index_offset);
+        //             console.log('set start', node);
+        //         }
+        //         if (index_offset <= end_index && index_offset + len >= start_index)
+        //         {
+        //             range.setEnd(node, end_index - index_offset);
+        //             console.log('set end', node);
+        //             return;
+        //         }
+        //         index_offset += len;
+        //     }
+        //     if (node.nextSibling != null)
+        //         parse_nodes(node.nextSibling);
+        // }
+        // parse_nodes(node);
+        // console.log(range);
         return range;
     }
 };
