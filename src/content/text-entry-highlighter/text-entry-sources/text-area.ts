@@ -109,22 +109,6 @@ export class HighlightTextAreaSource extends AbstractHighlightTextEntrySource
             });
         }
 
-        const check_for_scroll_size_change = () =>
-        {
-            if (this.rect.scroll_width != this.element.scrollWidth ||
-                this.rect.scroll_height != this.element.scrollHeight)
-            {
-                let rect_copy = Rect.copy(this.rect);
-                rect_copy.scroll_width = this.element.scrollWidth;
-                rect_copy.scroll_height = this.element.scrollHeight;
-                this.on_rect_changed(
-                    rect_copy,
-                    false,
-                    true
-                );
-            }
-        }
-
         this.bindings.bind_event(this.element, 'change', (event: Event) => {
             const new_text: string = text_area_element.value;
             this.text_node.nodeValue = new_text;
@@ -132,9 +116,7 @@ export class HighlightTextAreaSource extends AbstractHighlightTextEntrySource
             const mutations: Array<HighlightTextEntryMutation> = [{
                 type: HighlightTextEntryMutationType.change,
             }];
-            this.content_parser.update_content(mutations);
-            this.highlighter.update_content(mutations);
-            check_for_scroll_size_change();
+            this.update_content(mutations);
         });
 
         this.bindings.bind_event(this.element, 'input', (event: Event) => {
@@ -147,7 +129,6 @@ export class HighlightTextAreaSource extends AbstractHighlightTextEntrySource
             const length_diff: number = new_text.length - old_text.length;
             const length_diff_abs: number = Math.abs(length_diff);
             const type = input_event.inputType.toLocaleLowerCase();
-            console.log(type, this.selection[0], length_diff);
             let mutations: Array<HighlightTextEntryMutation> = [];
             const replacing_selection: boolean = this.selection[0] != 
                                                  this.selection[1];
@@ -200,25 +181,9 @@ export class HighlightTextAreaSource extends AbstractHighlightTextEntrySource
                     type: HighlightTextEntryMutationType.change,
                 });
             }
-            this.content_parser.update_content(mutations);
-            this.highlighter.update_content(mutations);
-            check_for_scroll_size_change();
+            this.update_content(mutations);
         });
 
-        // watch outside changes
-        // const element_input_callback = (event: Event) => {
-        //     const new_text: string = text_area_element.value;
-        //     this.text_node.nodeValue = new_text;
-        //     this.value = new_text;
-            
-        //     this.content_parser.update_content();
-        //     this.highlighter.update_content();
-        // };
-
-        // bind check if form or event changes textarea contents
-        // for (let event_name of ['input', 'change'])
-        //     this.bindings.bind_event(this.element, event_name, element_input_callback);
-        
         // sync scroll
         const sync_scroll = () => {
             this.scroll = [
@@ -232,6 +197,24 @@ export class HighlightTextAreaSource extends AbstractHighlightTextEntrySource
         });
         sync_scroll()
     };
+    
+    protected update_content(mutations: Array<HighlightTextEntryMutation>): void
+    {
+        this.highlighter.update_content(mutations);
+        // slows things down considerably
+        // if (this.rect.scroll_width != this.element.scrollWidth ||
+        //     this.rect.scroll_height != this.element.scrollHeight)
+        // {
+        //     let rect_copy = Rect.copy(this.rect);
+        //     rect_copy.scroll_width = this.element.scrollWidth;
+        //     rect_copy.scroll_height = this.element.scrollHeight;
+        //     this.on_rect_changed(
+        //         rect_copy,
+        //         false,
+        //         true
+        //     );
+        // }
+    }
 
     remove()
     {

@@ -6,12 +6,6 @@ import { calc_array_diff } from '../../common/array-diff';
 import { DocHighlight } from './highlighter';
 import { Rect } from '../../common/rect';
 
-interface DivRect
-{
-    rect: Rect;
-    div: HTMLDivElement;
-};
-
 export interface BoxIntensityRange extends HighlightRange
 {
     intensity: number
@@ -19,17 +13,36 @@ export interface BoxIntensityRange extends HighlightRange
 
 export class BoxHighlightRange implements DocHighlight
 {
-    protected all_divs:     HTMLDivElement;
-    protected div_rects:    Array<DivRect> = new Array<DivRect>();
+    protected divs_container:     HTMLDivElement;
+    protected divs:         Array<HTMLDivElement> = new Array<HTMLDivElement>();
     protected _color:       [number, number, number, number];
+    protected containers:   [Node, Node];
+    protected range_adjusted: boolean = false;
     current_range:          BoxIntensityRange;
+    
 
     constructor(
         range: BoxIntensityRange,
-        public document_range: Range,
+        protected _document_range: Range,
     )
     {
         this.update_range(range);
+    }
+    get document_range()
+    {
+        if (this.range_adjusted)
+        {
+            this._document_range.setStart(
+                this.containers[0] || this._document_range.startContainer,
+                this.current_range.start
+            );
+            this._document_range.setEnd(
+                this.containers[1] || this._document_range.endContainer,
+                this.current_range.end
+            );
+            this.range_adjusted = false;
+        }
+        return this._document_range;
     }
     update_range(range: HighlightRange): void
     {
@@ -40,87 +53,44 @@ export class BoxHighlightRange implements DocHighlight
         start: number=this.current_range.start,
         end: number=this.current_range.end,
         start_container: Node=this.document_range.endContainer,
-        end_container:Node=this.document_range.endContainer
+        end_container: Node=this.document_range.endContainer
     ): void
-    {
+    {   // TODO (cb?)
         this.current_range.start = start;
         this.current_range.end = end;
-        this.document_range.setStart(
-            start_container,
-            start
-        );
-        this.document_range.setEnd(
-            end_container,
-            end
-        );
+        this.containers = [start_container, end_container];
+        this.range_adjusted = true;
     }
-    render(highlighter: Highlighter, document: Document): void
+    render(highlighter: Highlighter, document: Document, range_rect: DOMRect): void
     {
-        if (this.all_divs == null)
+        console.log(range_rect, this.document_range);
+        if (this.divs_container == null)
         {
-            this.all_divs = document.createElement('div');
-            this.all_divs.setAttribute('style', `
+            this.divs_container = document.createElement('div');
+            this.divs_container.setAttribute('style', `
                 display: block;
                 position: absolute;
                 overflow: visible;
                 visibility: hidden;
                 background-color: rgba(255, 255, 255, 0.0);
                 transition: background-color 0.25s ease-in-out;
+                z-index: 999999;
             `);
-            highlighter.highlights.appendChild(this.all_divs);
+            highlighter.highlights.appendChild(this.divs_container);
             const t = window.setTimeout(
                 () => {
                     const [r, g, b, a] = this._color;
                     const c_string: string = `rgba(${r},${g},${b},${a})`;
-                    this.all_divs.style.backgroundColor = c_string;
+                    this.divs_container.style.backgroundColor = c_string;
                     window.clearTimeout(t);
                 }, 0
             )
         }
-        const b_rect: DOMRect = this.document_range.getBoundingClientRect();
-        this.all_divs.style.left = `${(b_rect.left + window.scrollX) - highlighter.highlights_rect_rel.left}px`;
-        this.all_divs.style.top = `${(b_rect.top + window.scrollY) - highlighter.highlights_rect_rel.top}px`;
-
-        console.log(b_rect, highlighter.highlights_rect_rel)
-
+        this.divs_container.style.left = `${(range_rect.left + window.scrollX) - highlighter.highlights_rect_rel.left}px`;
+        this.divs_container.style.top = `${(range_rect.top + window.scrollY) - highlighter.highlights_rect_rel.top}px`;
         const dom_rects: DOMRectList = this.document_range.getClientRects();
 
-        const div_rects_new: Array<DivRect> = new Array<DivRect>();
-        for (let i = 0; i < dom_rects.length; ++i)
-        {
-            const rect: DOMRect = dom_rects.item(i);
-            div_rects_new.push(
-                {
-                    rect: new Rect(
-                        rect.left,
-                        rect.top,
-                        rect.width,
-                        rect.height
-                    ),
-                    div: null
-                }
-            );
-        }
-        
-        const result = calc_array_diff<DivRect>(
-            div_rects_new,
-            this.div_rects,
-            (lhs: DivRect, rhs: DivRect): boolean => {
-                return lhs.rect.left == rhs.rect.left &&
-                       lhs.rect.top == rhs.rect.top &&
-                       lhs.rect.width == rhs.rect.width &&
-                       lhs.rect.height == rhs.rect.height;
-            }
-        );
-        
-        for (const removed of result.removed)
-        {
-            const index: number = this.div_rects.indexOf(removed);
-            this.div_rects[index].div.remove();
-            this.div_rects.splice(index, 1)
-        }
-
-        for (const added of result.added)
+        while (dom_rects.length > this.divs.length)
         {
             const element: HTMLDivElement = document.createElement('div');
             element.setAttribute('style', `
@@ -129,38 +99,49 @@ export class BoxHighlightRange implements DocHighlight
                 display: block;
                 visibility: visible;
                 background-color: inherit;
-                left:   ${added.rect.left - b_rect.left}px;
-                top:    ${added.rect.top - b_rect.top}px;
-                width:  ${added.rect.width}px;
-                height: ${added.rect.height}px;
-            `);//?z-index necessary?
-            added.div = element;
-            this.div_rects.push(added);
-            this.all_divs.appendChild(element);
+            `);
+            this.divs_container.appendChild(element);
+            this.divs.push(element);
+        }
+
+        while (dom_rects.length < this.divs.length)
+            this.divs.pop().remove();
+
+        for (let i: number = 0; i < this.divs.length; ++i)
+        {
+            const new_rect = dom_rects.item(i);
+            const div = this.divs[i];
+            div.style.left =    `${new_rect.left - range_rect.left}px`;
+            div.style.top =     `${new_rect.top - range_rect.top}px`;
+            div.style.width =   `${new_rect.width}px`;
+            div.style.height =  `${new_rect.height}px`;
         }
     }
 
     set color(c: [number, number, number, number])
     {
         this._color = c;
-        if (this.all_divs != null)
+        if (this.divs_container != null)
         {
             const [r, g, b, a] = this._color;
             const c_string: string = `rgba(${r},${g},${b},${a})`;
-            this.all_divs.style.backgroundColor = c_string;
+            this.divs_container.style.backgroundColor = c_string;
         }
     }
     
     remove(): void
     {
-        if (this.all_divs != null)
+        if (this.divs_container != null)
         {
-            this.all_divs.remove();
-            this.all_divs = null;
+            this.divs_container.remove();
+            this.divs_container = null;
         }
-        for (const div_rect of this.div_rects)
-            div_rect.div.remove();
+        if (this.divs.length > 0)
+        {
+            for (const div of this.divs)
+                div.remove();
 
-        this.div_rects = new Array<DivRect>();
+            this.divs = new Array<HTMLDivElement>();
+        }
     }
 };

@@ -1,5 +1,5 @@
 import { Rect } from '../../common/rect';
-import { HighlightContentParser, Highlighter, HighlightTextEntrySource } from './highlighter';
+import { Highlighter, HighlightTextEntrySource } from './highlighter';
 import { Bindings } from '../bindings';
 import { ElementObserver } from '../element_observer';
 
@@ -8,7 +8,6 @@ export abstract class AbstractHighlightTextEntrySource implements HighlightTextE
     value:                      string =                '';
     document:                   Document;
     shadow:                     ShadowRoot;
-    content_parser:             HighlightContentParser;
     highlighter:                Highlighter;
     scroll:                     [number, number] =      [0, 0];
     rect:                       Rect =                  new Rect();
@@ -28,13 +27,11 @@ export abstract class AbstractHighlightTextEntrySource implements HighlightTextE
     init(
         document: Document,
         shadow: ShadowRoot,
-        content_parser: HighlightContentParser,
         highlighter: Highlighter
     ): void
     {
         this.document =         document;
         this.shadow=            shadow;
-        this.content_parser =   content_parser;
         this.highlighter =      highlighter;
         this.on_init();
 
@@ -60,6 +57,7 @@ export abstract class AbstractHighlightTextEntrySource implements HighlightTextE
             },
             (changes: Map<string, string>, all: Map<string, string>) => { this.on_style_changed(changes, all); },
         );
+        this.highlighter.set_text_entry_source(this);
     }
     abstract get_range(start_index: number, end_index: number): Range;
     protected abstract on_init(): void;
@@ -70,5 +68,6 @@ export abstract class AbstractHighlightTextEntrySource implements HighlightTextE
     {
         this.element_observer.remove();
         this.bindings.remove();
+        this.highlighter.set_text_entry_source(null);
     }
 };

@@ -1525,8 +1525,13 @@ var PII_Filter;
             });
             // highlighting and input
             this.highlighter = new range_highlighter_1.RangeHighlighter();
-            this.content_parser = new box_highlight_content_parser_1.BoxHighlightContentParser((text) => {
-                webextension_polyfill_ts_1.browser.runtime.sendMessage(null, new common_messages_1.ICommonMessage.TextEntered(text));
+            this.content_parser = new box_highlight_content_parser_1.BoxHighlightContentParser((text, resolver) => {
+                if (this.resolver == null) {
+                    this.resolver = resolver;
+                    webextension_polyfill_ts_1.browser.runtime.sendMessage(null, new common_messages_1.ICommonMessage.TextEntered(text));
+                }
+                else
+                    console.warn('resolver is not null');
             });
             this.text_entry_highlighter = new text_entry_highlighter_1.TextEntryHighlighter(document, this.highlighter, this.content_parser);
             // TODO: make part of text_entry_highlighter
@@ -1550,7 +1555,7 @@ var PII_Filter;
         get active_element() {
             return this.active_element_;
         }
-        handle_pii(message) {
+        async handle_pii(message) {
             if (!message.ignore_highlight) {
                 let ranges = new Array();
                 for (const pii of message.pii) {
@@ -1560,8 +1565,13 @@ var PII_Filter;
                         intensity: pii.severity
                     });
                 }
-                // TODO check if request matches update id else discard
-                this.content_parser.set_ranges(ranges);
+                // resolve request
+                if (this.resolver != null) {
+                    this.resolver(ranges);
+                    this.resolver = null;
+                }
+                else
+                    console.warn('resolver null');
             }
         }
     }
@@ -1591,7 +1601,7 @@ var PII_Filter;
                 webextension_polyfill_ts_1.browser.runtime.sendMessage(null, new common_messages_1.ICommonMessage.Refocus());
             });
         }
-        handle_pii(message) {
+        async handle_pii(message) {
             super.handle_pii(message);
             this.info_overlay.severity = message.severity_mapping;
             if (message.pii != null)
@@ -1611,7 +1621,7 @@ var PII_Filter;
 ;
 new PII_Filter.Content();
 
-},{"./common/common-messages":4,"./content/dom-focus-manager":10,"./content/pii-filter-info-overlay":13,"./content/text-entry-highlighter/box-highlight-content-parser":17,"./content/text-entry-highlighter/range-highlighter":20,"./content/text-entry-highlighter/text-entry-highlighter":21,"./content/utils":23,"webextension-polyfill-ts":1}],9:[function(require,module,exports){
+},{"./common/common-messages":4,"./content/dom-focus-manager":10,"./content/pii-filter-info-overlay":13,"./content/text-entry-highlighter/box-highlight-content-parser":17,"./content/text-entry-highlighter/range-highlighter":20,"./content/text-entry-highlighter/text-entry-highlighter":21,"./content/utils":25,"webextension-polyfill-ts":1}],9:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Bindings = void 0;
@@ -2723,10 +2733,9 @@ class AbstractHighlightTextEntrySource {
         this.bindings = new bindings_1.Bindings();
     }
     //! only allow init once
-    init(document, shadow, content_parser, highlighter) {
+    init(document, shadow, highlighter) {
         this.document = document;
         this.shadow = shadow;
-        this.content_parser = content_parser;
         this.highlighter = highlighter;
         this.on_init();
         let last_rect = new rect_1.Rect();
@@ -2740,10 +2749,12 @@ class AbstractHighlightTextEntrySource {
             this.on_rect_changed(rect, pos_changed, size_changed);
             last_rect = rect;
         }, (changes, all) => { this.on_style_changed(changes, all); });
+        this.highlighter.set_text_entry_source(this);
     }
     remove() {
         this.element_observer.remove();
         this.bindings.remove();
+        this.highlighter.set_text_entry_source(null);
     }
 }
 exports.AbstractHighlightTextEntrySource = AbstractHighlightTextEntrySource;
@@ -2755,27 +2766,21 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.BoxHighlightContentParser = void 0;
 const box_highlight_range_1 = require("./box-highlight-range");
 class BoxHighlightContentParser {
-    constructor(content_updated) {
-        this.content_updated = content_updated;
+    constructor(parse_content) {
+        this.parse_content = parse_content;
     }
     set_highlighter(highlighter) {
         this.highlighter = highlighter;
     }
-    set_text_entry_source(text_entry_source) {
-        this.text_entry_source = text_entry_source;
-        if (this.text_entry_source != null)
-            this.content_updated(this.text_entry_source.value);
-    }
-    update_content(mutations) {
-        if (this.text_entry_source != null)
-            this.content_updated(this.text_entry_source.value);
-    }
-    set_ranges(ranges) {
-        if (this.text_entry_source != null) {
-            this.highlighter.set_ranges(ranges, (highlight_range, doc_range) => {
-                return new box_highlight_range_1.BoxHighlightRange(highlight_range, doc_range);
+    resolve_content(content, resolver) {
+        this.parse_content(content, (ranges) => {
+            resolver({
+                ranges: ranges,
+                make_highlight: (highlight_range, doc_range) => {
+                    return new box_highlight_range_1.BoxHighlightRange(highlight_range, doc_range);
+                }
             });
-        }
+        });
     }
 }
 exports.BoxHighlightContentParser = BoxHighlightContentParser;
@@ -2785,15 +2790,21 @@ exports.BoxHighlightContentParser = BoxHighlightContentParser;
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.BoxHighlightRange = void 0;
-const array_diff_1 = require("../../common/array-diff");
-const rect_1 = require("../../common/rect");
-;
 ;
 class BoxHighlightRange {
-    constructor(range, document_range) {
-        this.document_range = document_range;
-        this.div_rects = new Array();
+    constructor(range, _document_range) {
+        this._document_range = _document_range;
+        this.divs = new Array();
+        this.range_adjusted = false;
         this.update_range(range);
+    }
+    get document_range() {
+        if (this.range_adjusted) {
+            this._document_range.setStart(this.containers[0] || this._document_range.startContainer, this.current_range.start);
+            this._document_range.setEnd(this.containers[1] || this._document_range.endContainer, this.current_range.end);
+            this.range_adjusted = false;
+        }
+        return this._document_range;
     }
     update_range(range) {
         this.current_range = range;
@@ -2802,53 +2813,34 @@ class BoxHighlightRange {
     adjust_range(start = this.current_range.start, end = this.current_range.end, start_container = this.document_range.endContainer, end_container = this.document_range.endContainer) {
         this.current_range.start = start;
         this.current_range.end = end;
-        this.document_range.setStart(start_container, start);
-        this.document_range.setEnd(end_container, end);
+        this.containers = [start_container, end_container];
+        this.range_adjusted = true;
     }
-    render(highlighter, document) {
-        if (this.all_divs == null) {
-            this.all_divs = document.createElement('div');
-            this.all_divs.setAttribute('style', `
+    render(highlighter, document, range_rect) {
+        console.log(range_rect, this.document_range);
+        if (this.divs_container == null) {
+            this.divs_container = document.createElement('div');
+            this.divs_container.setAttribute('style', `
                 display: block;
                 position: absolute;
                 overflow: visible;
                 visibility: hidden;
                 background-color: rgba(255, 255, 255, 0.0);
                 transition: background-color 0.25s ease-in-out;
+                z-index: 999999;
             `);
-            highlighter.highlights.appendChild(this.all_divs);
+            highlighter.highlights.appendChild(this.divs_container);
             const t = window.setTimeout(() => {
                 const [r, g, b, a] = this._color;
                 const c_string = `rgba(${r},${g},${b},${a})`;
-                this.all_divs.style.backgroundColor = c_string;
+                this.divs_container.style.backgroundColor = c_string;
                 window.clearTimeout(t);
             }, 0);
         }
-        const b_rect = this.document_range.getBoundingClientRect();
-        this.all_divs.style.left = `${(b_rect.left + window.scrollX) - highlighter.highlights_rect_rel.left}px`;
-        this.all_divs.style.top = `${(b_rect.top + window.scrollY) - highlighter.highlights_rect_rel.top}px`;
-        console.log(b_rect, highlighter.highlights_rect_rel);
+        this.divs_container.style.left = `${(range_rect.left + window.scrollX) - highlighter.highlights_rect_rel.left}px`;
+        this.divs_container.style.top = `${(range_rect.top + window.scrollY)}px;// - highlighter.highlights_rect_rel.top}px`;
         const dom_rects = this.document_range.getClientRects();
-        const div_rects_new = new Array();
-        for (let i = 0; i < dom_rects.length; ++i) {
-            const rect = dom_rects.item(i);
-            div_rects_new.push({
-                rect: new rect_1.Rect(rect.left, rect.top, rect.width, rect.height),
-                div: null
-            });
-        }
-        const result = array_diff_1.calc_array_diff(div_rects_new, this.div_rects, (lhs, rhs) => {
-            return lhs.rect.left == rhs.rect.left &&
-                lhs.rect.top == rhs.rect.top &&
-                lhs.rect.width == rhs.rect.width &&
-                lhs.rect.height == rhs.rect.height;
-        });
-        for (const removed of result.removed) {
-            const index = this.div_rects.indexOf(removed);
-            this.div_rects[index].div.remove();
-            this.div_rects.splice(index, 1);
-        }
-        for (const added of result.added) {
+        while (dom_rects.length > this.divs.length) {
             const element = document.createElement('div');
             element.setAttribute('style', `
                 display: block;
@@ -2856,38 +2848,45 @@ class BoxHighlightRange {
                 display: block;
                 visibility: visible;
                 background-color: inherit;
-                left:   ${added.rect.left - b_rect.left}px;
-                top:    ${added.rect.top - b_rect.top}px;
-                width:  ${added.rect.width}px;
-                height: ${added.rect.height}px;
-            `); //?z-index necessary?
-            added.div = element;
-            this.div_rects.push(added);
-            this.all_divs.appendChild(element);
+            `);
+            this.divs_container.appendChild(element);
+            this.divs.push(element);
+        }
+        while (dom_rects.length < this.divs.length)
+            this.divs.pop().remove();
+        for (let i = 0; i < this.divs.length; ++i) {
+            const new_rect = dom_rects.item(i);
+            const div = this.divs[i];
+            div.style.left = `${new_rect.left - range_rect.left}px`;
+            div.style.top = `${new_rect.top - range_rect.top}px`;
+            div.style.width = `${new_rect.width}px`;
+            div.style.height = `${new_rect.height}px`;
         }
     }
     set color(c) {
         this._color = c;
-        if (this.all_divs != null) {
+        if (this.divs_container != null) {
             const [r, g, b, a] = this._color;
             const c_string = `rgba(${r},${g},${b},${a})`;
-            this.all_divs.style.backgroundColor = c_string;
+            this.divs_container.style.backgroundColor = c_string;
         }
     }
     remove() {
-        if (this.all_divs != null) {
-            this.all_divs.remove();
-            this.all_divs = null;
+        if (this.divs_container != null) {
+            this.divs_container.remove();
+            this.divs_container = null;
         }
-        for (const div_rect of this.div_rects)
-            div_rect.div.remove();
-        this.div_rects = new Array();
+        if (this.divs.length > 0) {
+            for (const div of this.divs)
+                div.remove();
+            this.divs = new Array();
+        }
     }
 }
 exports.BoxHighlightRange = BoxHighlightRange;
 ;
 
-},{"../../common/array-diff":3,"../../common/rect":7}],19:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.HighlightTextEntryMutationType = void 0;
@@ -2904,6 +2903,7 @@ var HighlightTextEntryMutationType;
 ;
 ;
 ;
+;
 
 },{}],20:[function(require,module,exports){
 "use strict";
@@ -2912,13 +2912,14 @@ exports.RangeHighlighter = void 0;
 const highlighter_1 = require("./highlighter");
 const array_diff_1 = require("../../common/array-diff");
 const rect_1 = require("../../common/rect");
-// import { DOMRectHighlight } from '../../../../../underlines/test';
 class RangeHighlighter {
     constructor() {
         this.ranges = new Array();
         this.highlights_rect_rel = new rect_1.Rect();
     }
-    // protected t_highlight:              DOMRectHighlight;
+    set_content_parser(content_parser) {
+        this.content_parser = content_parser;
+    }
     remove() {
         this.remove_ranges(this.ranges);
         this.ranges = new Array();
@@ -2934,6 +2935,7 @@ class RangeHighlighter {
             this.highlights.remove();
             this.highlights = null;
         }
+        this.active_promise = null;
     }
     update_ranges(ranges, render = true) {
         for (const range of ranges) {
@@ -2946,14 +2948,28 @@ class RangeHighlighter {
         if (render)
             this.render();
     }
-    set_ranges(ranges, make_highlight) {
+    set_ranges(ranges_constructor, adjust_overlapping_ranges = false) {
         // add / remove only what is necessary
-        const result = array_diff_1.calc_array_diff(ranges, this.ranges, (lhs, rhs) => {
+        const result = array_diff_1.calc_array_diff(ranges_constructor.ranges, this.ranges, (lhs, rhs) => {
             return lhs.start == rhs.start &&
                 lhs.end == rhs.end;
         });
         this.remove_ranges(result.removed, false);
-        this.add_ranges(result.added, make_highlight, false);
+        this.add_ranges({
+            ranges: result.added,
+            make_highlight: ranges_constructor.make_highlight
+        }, false);
+        if (adjust_overlapping_ranges) {
+            for (let range of result.overlap) {
+                const index = this.ranges.findIndex((value) => {
+                    return value.start == range.start && value.end == range.end;
+                });
+                if (index > -1) {
+                    range.start = this.ranges[index].highlight.current_range.start;
+                    range.end = this.ranges[index].highlight.current_range.end;
+                }
+            }
+        }
         this.update_ranges(result.overlap, false);
         this.render();
     }
@@ -2969,14 +2985,14 @@ class RangeHighlighter {
         if (render)
             this.render();
     }
-    add_ranges(elements, make_highlight, render = true) {
+    add_ranges(ranges_constructor, render = true) {
         if (this.text_entry_source != null) {
             const text_len = this.text_entry_source.value.length;
             let last_insert_index;
             let last_element;
-            if (elements.length > 0) {
+            if (ranges_constructor.ranges.length > 0) {
                 // insert in sorted order
-                for (const added of elements) {
+                for (const added of ranges_constructor.ranges) {
                     // skip invalid ranges
                     if (added.start < 0 ||
                         added.end < 0 ||
@@ -2996,7 +3012,7 @@ class RangeHighlighter {
                     const highlighted_range = {
                         start: added.start,
                         end: added.end,
-                        highlight: make_highlight(added, this.text_entry_source.get_range(added.start, added.end))
+                        highlight: ranges_constructor.make_highlight(added, this.text_entry_source.get_range(added.start, added.end))
                     };
                     if (insert_index != null)
                         this.ranges.splice(insert_index, 0, highlighted_range);
@@ -3009,8 +3025,9 @@ class RangeHighlighter {
         }
     }
     set_text_entry_source(text_entry_source) {
-        this.text_entry_source = text_entry_source;
         this.remove();
+        this.content_id = 0;
+        this.text_entry_source = text_entry_source;
         if (this.text_entry_source != null) {
             this.viewport = this.text_entry_source.document.createElement('div');
             this.highlights_viewport = this.text_entry_source.document.createElement('div');
@@ -3028,6 +3045,7 @@ class RangeHighlighter {
                 overflow: hidden;
                 visibility: hidden;
                 pointer-events: none;
+                z-index: 99999;
             `);
             this.highlights.setAttribute('style', `
                 display: block;
@@ -3035,12 +3053,14 @@ class RangeHighlighter {
                 overflow: visible;
                 visibility: visible;
                 pointer-events: none;
+                z-index: 99999;
             `);
             this.highlights_viewport.appendChild(this.highlights);
             this.viewport.appendChild(this.highlights_viewport);
             this.text_entry_source.shadow.appendChild(this.viewport);
             this.update_scroll();
             this.update_layout();
+            this.stage_new_content();
         }
     }
     update_content(mutations) {
@@ -3105,13 +3125,43 @@ class RangeHighlighter {
                                     range.highlight.adjust_range();
                                 return true;
                             });
-                            console.log(this.ranges);
                             break;
                         }
                     default: break;
                 }
             }
             this.render();
+            this.stage_new_content();
+        }
+    }
+    stage_new_content() {
+        this.content_id++;
+        if (this.text_entry_source != null && this.active_promise == null) {
+            const stage_id = this.content_id;
+            const source = this.text_entry_source;
+            // sync adjusted range values for comparison on return
+            for (let range of this.ranges) {
+                range.start = range.highlight.current_range.start;
+                range.end = range.highlight.current_range.end;
+            }
+            this.active_promise = new Promise((resolve) => {
+                this.content_parser.resolve_content(this.text_entry_source.value, (ranges_constructor) => {
+                    resolve(ranges_constructor);
+                });
+            });
+            this.active_promise.then((ranges_constructor) => {
+                (async () => {
+                    this.active_promise = null;
+                    if (this.text_entry_source === source) {
+                        this.set_ranges(ranges_constructor, true);
+                        if (stage_id != this.content_id) { // recurse
+                            this.stage_new_content();
+                        }
+                        return ranges_constructor;
+                    }
+                })();
+            }, (reason) => {
+            });
         }
     }
     update_rect() {
@@ -3130,36 +3180,127 @@ class RangeHighlighter {
             this.highlights_viewport.style.width = `${width_i}px`;
             this.highlights_viewport.style.height = `${height_i}px`;
             // this.text_entry_source.viewport_i.apply_to_element(this.highlights_viewport, true, true);
-            this.highlights_viewport.style.backgroundColor = 'rgba(0, 255, 0, 0.4)';
-            // if (this.t_highlight != null)
-            //     this.t_highlight.remove();
-            // this.t_highlight = new DOMRectHighlight(document, this.text_entry_source.viewport_i, 2);
-            // this.t_highlight.color = [0, 255, 0, 1.0];
+            // this.highlights_viewport.style.backgroundColor = 'rgba(0, 255, 0, 0.4)';
             // this.text_entry_source.viewport_o.apply_position_to_element(this.highlights, true);
             this.update_scroll();
         }
     }
-    update_position() {
+    async update_position() {
         this.update_rect();
     }
-    update_scroll() {
+    async update_scroll() {
+        const render_scroll = () => {
+            const [scroll_x, scroll_y] = this.text_entry_source.scroll;
+            return this.render().then(() => {
+                this.rendering_scroll = null;
+                if (this.text_entry_source != null) {
+                    const [new_scroll_x, new_scroll_y] = this.text_entry_source.scroll;
+                    if (new_scroll_x != scroll_x || new_scroll_y != scroll_y) { // recurse
+                        this.update_scroll();
+                    }
+                }
+            });
+        };
         if (this.text_entry_source != null) {
+            if (this.scroll_update_timeout != null)
+                window.clearTimeout(this.scroll_update_timeout);
+            this.scroll_update_timeout = window.setTimeout(() => {
+                if (this.rendering_scroll == null)
+                    this.rendering_scroll = render_scroll();
+            }, 500);
             const [scroll_x, scroll_y] = this.text_entry_source.scroll;
             this.highlights.style.left = `${-scroll_x}px`;
             this.highlights.style.top = `${-scroll_y}px`;
         }
     }
-    update_layout() {
+    async update_layout() {
         if (this.text_entry_source != null) {
             this.update_rect();
             this.render();
         }
     }
-    render() {
+    // protected last_visible_range: [number, number] = [0, 0];
+    async render() {
+        // const rect_intersects_vp = (rect: DOMRect) =>
+        // {
+        //     const [scroll_x, scroll_y] = this.text_entry_source.scroll;
+        //     return (!(rect.bottom - scroll_y < this.highlights_rect_rel.top ||
+        //         rect.top - scroll_y >  this.highlights_rect_rel.bottom ||
+        //         rect.left - scroll_x > this.highlights_rect_rel.right ||
+        //         rect.right - scroll_x < this.highlights_rect_rel.left));
+        // }
+        // if (this.text_entry_source != null)
+        // {
+        //     const ranges_len: number = this.ranges.length;
+        //     let range_extent: [number, number] = [
+        //         Math.min(this.last_visible_range[0], ranges_len-1),
+        //         Math.min(this.last_visible_range[1], ranges_len-1)
+        //     ]
+        //     // scroll direction?
+        //     const new_ranges: [number, number] = [null, null];
+        //     const middle_index: number = range_extent[0] + Math.round((range_extent[1]-range_extent[0]) / 2)
+        //     for (let i: number = 0; i < ranges_len; ++i)
+        //     {
+        //         const left_index: number = middle_index - i;
+        //         const right_index: number = middle_index + i;
+        //         let left_range: HighlightedRange, right_range: HighlightedRange;
+        //         if (left_index >= 0)
+        //         {
+        //             left_range = this.ranges[left_index];
+        //             const range_rect: DOMRect = left_range.highlight.document_range.getBoundingClientRect();
+        //             if (rect_intersects_vp(range_rect))
+        //             {
+        //                 new_ranges[0] = new_ranges[0] == null ? left_index : Math.min(new_ranges[0], left_index);
+        //                 new_ranges[1] = new_ranges[1] == null ? left_index : Math.max(new_ranges[1], left_index);
+        //                 left_range.highlight.render(this, this.text_entry_source.document, range_rect);
+        //             }
+        //         }
+        //         if (right_index < ranges_len)
+        //         {
+        //             right_range = this.ranges[right_index];
+        //             const range_rect: DOMRect = right_range.highlight.document_range.getBoundingClientRect();
+        //             if (rect_intersects_vp(range_rect))
+        //             {
+        //                 new_ranges[0] = new_ranges[0] == null ? right_index : Math.min(new_ranges[0], right_index);
+        //                 new_ranges[1] = new_ranges[1] == null ? right_index : Math.max(new_ranges[1], right_index);
+        //                 right_range.highlight.render(this, this.text_entry_source.document, range_rect);
+        //             }
+        //         }
+        //         if (new_ranges[0] != null && new_ranges[1] != null &&
+        //             left_range == null && right_range == null)
+        //             break;
+        //     }
+        //     if (new_ranges[0] != null && new_ranges[1] != null)
+        //     {
+        //         // todo optimize this
+        //         for (let i: number = this.last_visible_range[0];
+        //              i < Math.min(this.last_visible_range[1] + 1, ranges_len); ++i)
+        //         {
+        //             if (i < new_ranges[0] || i > new_ranges[1])
+        //                 this.ranges[i].highlight.remove();
+        //         }
+        //         this.last_visible_range = new_ranges;
+        //     }
+        // remove last visible range
+        // console.log(this.last_visible_range)
+        // update before range and set limit
+        // update range and check if there is limit
+        // update after range and set limit
         if (this.text_entry_source != null) {
             for (const range of this.ranges) {
-                range.highlight.document_range = this.text_entry_source.get_range(range.highlight.current_range.start, range.highlight.current_range.end);
-                range.highlight.render(this, this.text_entry_source.document);
+                const [scroll_x, scroll_y] = this.text_entry_source.scroll;
+                const range_rect = range.highlight.document_range.getBoundingClientRect();
+                // if (!(range_rect.bottom - scroll_y < this.highlights_rect_rel.top ||
+                //     range_rect.top - scroll_y >  this.highlights_rect_rel.bottom ||
+                //     range_rect.left - scroll_x > this.highlights_rect_rel.right ||
+                //     range_rect.right - scroll_x < this.highlights_rect_rel.left))
+                {
+                    range.highlight.render(this, this.text_entry_source.document, range_rect);
+                }
+                // else
+                // {
+                //     range.highlight.remove();
+                // }
             }
         }
     }
@@ -3173,6 +3314,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.TextEntryHighlighter = void 0;
 const bindings_1 = require("../bindings");
 const text_area_1 = require("./text-entry-sources/text-area");
+const input_1 = require("./text-entry-sources/input");
+const contenteditable_1 = require("./text-entry-sources/contenteditable");
 class TextEntryHighlighter {
     constructor(document, highlighter, content_parser) {
         this.document = document;
@@ -3181,6 +3324,7 @@ class TextEntryHighlighter {
         this.bindings = new bindings_1.Bindings();
         // bind highlighter and content parser
         this.content_parser.set_highlighter(highlighter);
+        this.highlighter.set_content_parser(this.content_parser);
         // create shadow
         this.root_div = this.document.createElement("div");
         this.shadow = this.root_div.attachShadow({ mode: 'open' });
@@ -3196,11 +3340,11 @@ class TextEntryHighlighter {
                 target_element.removeEventListener('mouseup', add_interface);
                 target_element.removeEventListener('keyup', add_interface);
                 if (target_element.nodeName == 'INPUT')
-                    return; // TODO
+                    this.source = new input_1.HighlightInputSource(target_element, polling_interval);
                 else if (target_element.nodeName == 'TEXTAREA')
                     this.source = new text_area_1.HighlightTextAreaSource(target_element, polling_interval);
                 else if (target_element.isContentEditable)
-                    return; // TODO
+                    this.source = new contenteditable_1.HighlightContentEditableSource(target_element, polling_interval);
                 else
                     return;
                 // bind interface removal
@@ -3212,9 +3356,7 @@ class TextEntryHighlighter {
                     target_element.addEventListener(event_name, on_blur);
                 }
                 // initialize
-                this.source.init(this.document, this.shadow, this.content_parser, this.highlighter);
-                this.highlighter.set_text_entry_source(this.source);
-                this.content_parser.set_text_entry_source(this.source);
+                this.source.init(this.document, this.shadow, this.highlighter);
                 console.log('bound');
             };
             target_element.addEventListener('mouseup', add_interface);
@@ -3225,8 +3367,6 @@ class TextEntryHighlighter {
         if (this.source != null) {
             this.source.remove();
             this.source = null;
-            this.highlighter.set_text_entry_source(this.source);
-            this.content_parser.set_text_entry_source(this.source);
             console.log('released');
         }
     }
@@ -3237,7 +3377,500 @@ class TextEntryHighlighter {
 exports.TextEntryHighlighter = TextEntryHighlighter;
 ;
 
-},{"../bindings":9,"./text-entry-sources/text-area":22}],22:[function(require,module,exports){
+},{"../bindings":9,"./text-entry-sources/contenteditable":22,"./text-entry-sources/input":23,"./text-entry-sources/text-area":24}],22:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.HighlightContentEditableSource = void 0;
+const abstract_highlight_text_entry_source_1 = require("../abstract-highlight-text-entry-source");
+const rect_1 = require("../../../common/rect");
+const highlighter_1 = require("../highlighter");
+function get_scrollbar_width(document) {
+    // invisible container
+    const outer = document.createElement('div');
+    outer.style.visibility = 'hidden';
+    outer.style.overflow = 'scroll';
+    //? should this be on a shadow?
+    document.body.appendChild(outer);
+    //inner element
+    const inner = document.createElement('div');
+    outer.appendChild(inner);
+    // calc width
+    const width = (outer.getBoundingClientRect().width - inner.getBoundingClientRect().width);
+    // remove element
+    outer.remove();
+    return width;
+}
+const re_ignore_css_props = new RegExp('(' + [
+    'animation',
+    'transition',
+    'margin',
+    'margin-top',
+    'margin-bottom',
+    'margin-left',
+    'margin-right',
+    'margin-block-start',
+    'margin-block-end',
+    'margin-inline-start',
+    'margin-inline-end',
+    'visibility',
+    'position',
+    'top',
+    'left',
+    'bottom',
+    'right',
+    'max-width',
+    'max-height',
+    'transform',
+    'max-inline-size',
+    'max-block-size',
+    'width',
+    'height'
+].join('|') + ')', 'i');
+class HighlightContentEditableSource extends abstract_highlight_text_entry_source_1.AbstractHighlightTextEntrySource {
+    constructor(element, polling_interval) {
+        super(element, polling_interval);
+        this.selection = [0, 0];
+    }
+    on_init() {
+        const get_str = () => {
+            const range = this.document.createRange();
+            range.selectNode(this.element);
+            return range.toString();
+        };
+        this.value = get_str();
+        this.computed_style = window.getComputedStyle(this.element);
+        this.bindings.bind_event(this.element, 'change', (event) => {
+            this.value = get_str();
+            const mutations = [{
+                    type: highlighter_1.HighlightTextEntryMutationType.change,
+                }];
+            this.update_content(mutations);
+        });
+        this.bindings.bind_event(this.element, 'input', (event) => {
+            const input_event = event;
+            const old_text = this.value;
+            const new_text = get_str();
+            this.value = new_text;
+            const length_diff = new_text.length - old_text.length;
+            const length_diff_abs = Math.abs(length_diff);
+            const type = input_event.inputType.toLocaleLowerCase();
+            let mutations = [];
+            const replacing_selection = this.selection[0] !=
+                this.selection[1];
+            // very basic input handling
+            if (replacing_selection) {
+                mutations.push({
+                    type: highlighter_1.HighlightTextEntryMutationType.remove,
+                    index: this.selection[0],
+                    length: this.selection[1] - this.selection[0]
+                });
+            }
+            if (type.includes('insert') && length_diff > 0) {
+                // TODO check for all types and add correct logic here
+                mutations.push({
+                    type: highlighter_1.HighlightTextEntryMutationType.insert,
+                    index: this.selection[0],
+                    length: length_diff_abs
+                });
+            }
+            else if (type.includes('delete') && length_diff < 0) {
+                if (!replacing_selection) {
+                    if (type.includes('backward')) {
+                        mutations.push({
+                            type: highlighter_1.HighlightTextEntryMutationType.remove,
+                            index: this.selection[0] - length_diff_abs,
+                            length: length_diff_abs
+                        });
+                    }
+                    else { // all other is considered forwards for now
+                        mutations.push({
+                            type: highlighter_1.HighlightTextEntryMutationType.remove,
+                            index: this.selection[0],
+                            length: length_diff_abs
+                        });
+                    }
+                }
+            }
+            else {
+                // TODO:
+                // https://rawgit.com/w3c/input-events/v1/index.html#interface-InputEvent-Attributes and undo stack
+                // or diff
+                mutations.push({
+                    type: highlighter_1.HighlightTextEntryMutationType.change,
+                });
+            }
+            this.update_content(mutations);
+        });
+        // sync scroll 
+        const sync_scroll = () => {
+            this.scroll = [
+                this.element.scrollLeft,
+                this.element.scrollTop
+            ];
+            this.highlighter.update_scroll();
+        };
+        this.bindings.bind_event(this.element, 'scroll', (event) => {
+            sync_scroll();
+        });
+        sync_scroll();
+    }
+    ;
+    update_content(mutations) {
+        this.highlighter.update_content(mutations);
+        // slows things down considerably
+        // if (this.rect.scroll_width != this.element.scrollWidth ||
+        //     this.rect.scroll_height != this.element.scrollHeight)
+        // {
+        //     let rect_copy = Rect.copy(this.rect);
+        //     rect_copy.scroll_width = this.element.scrollWidth;
+        //     rect_copy.scroll_height = this.element.scrollHeight;
+        //     this.on_rect_changed(
+        //         rect_copy,
+        //         false,
+        //         true
+        //     );
+        // }
+    }
+    remove() {
+        super.remove();
+    }
+    on_rect_changed(rect, position_changed, size_changed) {
+        this.rect = rect;
+        this.viewport_o = rect_1.Rect.copy(this.rect);
+        this.viewport_o.left += this.element.clientLeft;
+        this.viewport_o.top += this.element.clientTop;
+        const overflowing_y = this.element.scrollHeight != this.element.clientHeight;
+        this.viewport_o.width = this.rect.width - ((overflowing_y ? this.scrollbar_width : 0) +
+            parseFloat(this.computed_style.borderLeftWidth) +
+            parseFloat(this.computed_style.borderRightWidth));
+        const overflowing_x = this.element.scrollWidth != this.element.clientWidth;
+        this.viewport_o.height = this.rect.height - ((overflowing_x ? this.scrollbar_width : 0) +
+            parseFloat(this.computed_style.borderTopWidth) +
+            parseFloat(this.computed_style.borderBottomWidth));
+        // this.mirror.style.width =          `${this.viewport_o.width}px`;
+        // this.mirror.style.height =         `${this.viewport_o.height}px`;
+        // //?
+        // this.mirror.style.paddingLeft =     this.computed_style.paddingLeft;
+        // this.mirror.style.paddingTop =      this.computed_style.paddingTop;
+        // this.mirror.style.paddingRight =    this.computed_style.paddingRight;
+        // this.mirror.style.paddingBottom =   this.computed_style.paddingBottom;
+        this.viewport_i = rect_1.Rect.copy(this.viewport_o);
+        if (true) //! TODO: check if firefox
+         {
+            const pd_l = parseFloat(this.computed_style.paddingLeft);
+            const pd_t = parseFloat(this.computed_style.paddingTop);
+            const pd_r = parseFloat(this.computed_style.paddingRight);
+            const pd_b = parseFloat(this.computed_style.paddingBottom);
+            this.viewport_i.top += pd_t;
+            this.viewport_i.left += pd_l;
+            this.viewport_i.width -= pd_l + pd_r;
+            this.viewport_i.height -= pd_t + pd_b;
+        }
+        if (position_changed)
+            this.highlighter.update_position();
+        if (size_changed)
+            this.highlighter.update_layout();
+    }
+    on_style_changed(changes, all) {
+        // for (let [key, value] of changes)
+        // {
+        //     if (!re_ignore_css_props.test(key))
+        //         Reflect.set(this.mirror.style, key, value);
+        // }
+        // this.mirror.style.boxSizing =      'border-box';
+        // this.mirror.style.overflow =       'visible';
+        // this.mirror.style.textRendering =  'geometricPrecision';
+        // this.mirror.style.border =         'none';
+        // set defaults
+        // if (!all.has('white-space')) //!? TODO
+        //     this.mirror.style.whiteSpace =   'pre-wrap';
+        // if (!all.has('word-wrap'))
+        //     this.mirror.style.wordWrap =     'break-word';
+        // if (!all.has('line-height'))
+        //     this.mirror.style.lineHeight =   'normal';
+        // this.mirror.style.cssText +=         'appearance: textarea;'; //?
+        // this.mirror.style.pointerEvents =    'none';
+        this.highlighter.update_layout();
+    }
+    get_range(start_index, end_index) {
+        let range = this.document.createRange();
+        let t_range = this.document.createRange();
+        let node = this.element.firstChild;
+        let index_offset = 0;
+        const parse_nodes = (node) => {
+            if (node.firstChild != null)
+                parse_nodes(node.firstChild);
+            else {
+                t_range.selectNode(node);
+                const len = t_range.toString().length;
+                if (index_offset <= start_index && index_offset + len > start_index) {
+                    range.setStart(node, start_index - index_offset);
+                    console.log('set start', node);
+                }
+                if (index_offset <= end_index && index_offset + len >= start_index) {
+                    range.setEnd(node, end_index - index_offset);
+                    console.log('set end', node);
+                    return;
+                }
+                index_offset += len;
+            }
+            if (node.nextSibling != null)
+                parse_nodes(node.nextSibling);
+        };
+        parse_nodes(node);
+        console.log(range);
+        return range;
+    }
+}
+exports.HighlightContentEditableSource = HighlightContentEditableSource;
+;
+
+},{"../../../common/rect":7,"../abstract-highlight-text-entry-source":16,"../highlighter":19}],23:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.HighlightInputSource = void 0;
+const abstract_highlight_text_entry_source_1 = require("../abstract-highlight-text-entry-source");
+const rect_1 = require("../../../common/rect");
+const highlighter_1 = require("../highlighter");
+function get_scrollbar_width(document) {
+    // invisible container
+    const outer = document.createElement('div');
+    outer.style.visibility = 'hidden';
+    outer.style.overflow = 'scroll';
+    //? should this be on a shadow?
+    document.body.appendChild(outer);
+    //inner element
+    const inner = document.createElement('div');
+    outer.appendChild(inner);
+    // calc width
+    const width = (outer.getBoundingClientRect().width - inner.getBoundingClientRect().width);
+    // remove element
+    outer.remove();
+    return width;
+}
+const re_ignore_css_props = new RegExp('(' + [
+    'animation',
+    'transition',
+    'margin',
+    'margin-top',
+    'margin-bottom',
+    'margin-left',
+    'margin-right',
+    'margin-block-start',
+    'margin-block-end',
+    'margin-inline-start',
+    'margin-inline-end',
+    'visibility',
+    'position',
+    'top',
+    'left',
+    'bottom',
+    'right',
+    'max-width',
+    'max-height',
+    'transform',
+    'max-inline-size',
+    'max-block-size',
+    'width',
+    'height'
+].join('|') + ')', 'i');
+class HighlightInputSource extends abstract_highlight_text_entry_source_1.AbstractHighlightTextEntrySource {
+    constructor(element, polling_interval) {
+        super(element, polling_interval);
+        this.selection = [0, 0];
+    }
+    on_init() {
+        this.mirror = this.document.createElement('div');
+        this.shadow.appendChild(this.mirror);
+        const input_element = this.element;
+        this.value = input_element.value;
+        this.selection = [
+            Math.min(input_element.selectionStart, input_element.selectionEnd),
+            Math.max(input_element.selectionStart, input_element.selectionEnd),
+        ];
+        // Get the scrollbar width
+        this.scrollbar_width = get_scrollbar_width(this.document);
+        this.text_node = this.document.createTextNode(input_element.value);
+        this.computed_style = window.getComputedStyle(this.element);
+        this.mirror.appendChild(this.text_node);
+        // initial styling
+        this.mirror.setAttribute('aria-hidden', 'true');
+        this.mirror.setAttribute('style', `
+            display: block;
+            position: absolute;
+            height: 0;
+            width: 0;
+            top: 0;
+            height: 0;
+            overflow: hidden;
+            mouse-events: none;
+            visibility: hidden;
+        `);
+        // bind selection
+        for (const event_name of ['mouseup', 'keyup', 'selectionchange', 'select']) {
+            this.bindings.bind_event(this.element, event_name, (event) => {
+                this.selection = [
+                    Math.min(input_element.selectionStart, input_element.selectionEnd),
+                    Math.max(input_element.selectionStart, input_element.selectionEnd),
+                ];
+            });
+        }
+        this.bindings.bind_event(this.element, 'change', (event) => {
+            const new_text = input_element.value;
+            this.text_node.nodeValue = new_text;
+            this.value = new_text;
+            const mutations = [{
+                    type: highlighter_1.HighlightTextEntryMutationType.change,
+                }];
+            this.update_content(mutations);
+        });
+        this.bindings.bind_event(this.element, 'input', (event) => {
+            const input_event = event;
+            const old_text = this.value;
+            const new_text = input_element.value;
+            this.text_node.nodeValue = new_text;
+            this.value = new_text;
+            const length_diff = new_text.length - old_text.length;
+            const length_diff_abs = Math.abs(length_diff);
+            const type = input_event.inputType.toLocaleLowerCase();
+            let mutations = [];
+            const replacing_selection = this.selection[0] !=
+                this.selection[1];
+            // very basic input handling
+            if (replacing_selection) {
+                mutations.push({
+                    type: highlighter_1.HighlightTextEntryMutationType.remove,
+                    index: this.selection[0],
+                    length: this.selection[1] - this.selection[0]
+                });
+            }
+            if (type.includes('insert') && length_diff > 0) {
+                // TODO check for all types and add correct logic here
+                mutations.push({
+                    type: highlighter_1.HighlightTextEntryMutationType.insert,
+                    index: this.selection[0],
+                    length: length_diff_abs
+                });
+            }
+            else if (type.includes('delete') && length_diff < 0) {
+                if (!replacing_selection) {
+                    if (type.includes('backward')) {
+                        mutations.push({
+                            type: highlighter_1.HighlightTextEntryMutationType.remove,
+                            index: this.selection[0] - length_diff_abs,
+                            length: length_diff_abs
+                        });
+                    }
+                    else { // all other is considered forwards for now
+                        mutations.push({
+                            type: highlighter_1.HighlightTextEntryMutationType.remove,
+                            index: this.selection[0],
+                            length: length_diff_abs
+                        });
+                    }
+                }
+            }
+            else {
+                // TODO:
+                // https://rawgit.com/w3c/input-events/v1/index.html#interface-InputEvent-Attributes and undo stack
+                // or diff
+                mutations.push({
+                    type: highlighter_1.HighlightTextEntryMutationType.change,
+                });
+            }
+            this.update_content(mutations);
+        });
+        // sync scroll
+        const sync_scroll = () => {
+            this.scroll = [
+                this.element.scrollLeft,
+                this.element.scrollTop
+            ];
+            this.highlighter.update_scroll();
+        };
+        this.bindings.bind_event(this.element, 'scroll', (event) => {
+            sync_scroll();
+        });
+        sync_scroll();
+    }
+    ;
+    update_content(mutations) {
+        this.highlighter.update_content(mutations);
+    }
+    remove() {
+        if (this.mirror != null)
+            this.mirror.remove();
+        if (this.text_node != null)
+            this.text_node.remove();
+        super.remove();
+    }
+    on_rect_changed(rect, position_changed, size_changed) {
+        this.rect = rect;
+        this.viewport_o = rect_1.Rect.copy(this.rect);
+        this.viewport_o.left += this.element.clientLeft;
+        this.viewport_o.top += this.element.clientTop;
+        const overflowing_y = false; //this.element.scrollHeight != this.element.clientHeight;
+        this.viewport_o.width = this.rect.width - ((overflowing_y ? this.scrollbar_width : 0) +
+            parseFloat(this.computed_style.borderLeftWidth) +
+            parseFloat(this.computed_style.borderRightWidth));
+        const overflowing_x = false; //this.element.scrollWidth != this.element.clientWidth;
+        this.viewport_o.height = this.rect.height - ((overflowing_x ? this.scrollbar_width : 0) +
+            parseFloat(this.computed_style.borderTopWidth) +
+            parseFloat(this.computed_style.borderBottomWidth));
+        this.mirror.style.width = `${this.viewport_o.width}px`;
+        this.mirror.style.height = `${this.viewport_o.height}px`;
+        //?
+        this.mirror.style.paddingLeft = this.computed_style.paddingLeft;
+        this.mirror.style.paddingTop = this.computed_style.paddingTop;
+        this.mirror.style.paddingRight = this.computed_style.paddingRight;
+        this.mirror.style.paddingBottom = this.computed_style.paddingBottom;
+        this.viewport_i = rect_1.Rect.copy(this.viewport_o);
+        if (true) //! TODO: check if firefox
+         {
+            const pd_l = parseFloat(this.computed_style.paddingLeft);
+            const pd_t = parseFloat(this.computed_style.paddingTop);
+            const pd_r = parseFloat(this.computed_style.paddingRight);
+            const pd_b = parseFloat(this.computed_style.paddingBottom);
+            this.viewport_i.top += pd_t;
+            this.viewport_i.left += pd_l;
+            this.viewport_i.width -= pd_l + pd_r;
+            this.viewport_i.height -= pd_t + pd_b;
+        }
+        this.mirror.style.lineHeight = this.computed_style.height;
+        if (position_changed)
+            this.highlighter.update_position();
+        if (size_changed)
+            this.highlighter.update_layout();
+    }
+    on_style_changed(changes, all) {
+        for (let [key, value] of changes) {
+            if (!re_ignore_css_props.test(key))
+                Reflect.set(this.mirror.style, key, value);
+        }
+        // TODO vert center?
+        this.mirror.style.boxSizing = 'border-box';
+        this.mirror.style.overflow = 'visible';
+        this.mirror.style.textRendering = 'geometricPrecision';
+        this.mirror.style.border = 'none';
+        // set defaults
+        if (!all.has('word-wrap'))
+            this.mirror.style.wordWrap = 'break-word';
+        this.mirror.style.cssText += 'appearance: textarea;'; //?
+        this.mirror.style.pointerEvents = 'none';
+        this.mirror.style.whiteSpace = 'nowrap';
+        this.highlighter.update_layout();
+    }
+    get_range(start_index, end_index) {
+        let range = this.document.createRange();
+        range.setStart(this.text_node, start_index);
+        range.setEnd(this.text_node, end_index);
+        return range;
+    }
+}
+exports.HighlightInputSource = HighlightInputSource;
+;
+
+},{"../../../common/rect":7,"../abstract-highlight-text-entry-source":16,"../highlighter":19}],24:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.HighlightTextAreaSource = void 0;
@@ -3327,15 +3960,6 @@ class HighlightTextAreaSource extends abstract_highlight_text_entry_source_1.Abs
                 ];
             });
         }
-        const check_for_scroll_size_change = () => {
-            if (this.rect.scroll_width != this.element.scrollWidth ||
-                this.rect.scroll_height != this.element.scrollHeight) {
-                let rect_copy = rect_1.Rect.copy(this.rect);
-                rect_copy.scroll_width = this.element.scrollWidth;
-                rect_copy.scroll_height = this.element.scrollHeight;
-                this.on_rect_changed(rect_copy, false, true);
-            }
-        };
         this.bindings.bind_event(this.element, 'change', (event) => {
             const new_text = text_area_element.value;
             this.text_node.nodeValue = new_text;
@@ -3343,9 +3967,7 @@ class HighlightTextAreaSource extends abstract_highlight_text_entry_source_1.Abs
             const mutations = [{
                     type: highlighter_1.HighlightTextEntryMutationType.change,
                 }];
-            this.content_parser.update_content(mutations);
-            this.highlighter.update_content(mutations);
-            check_for_scroll_size_change();
+            this.update_content(mutations);
         });
         this.bindings.bind_event(this.element, 'input', (event) => {
             const input_event = event;
@@ -3356,7 +3978,6 @@ class HighlightTextAreaSource extends abstract_highlight_text_entry_source_1.Abs
             const length_diff = new_text.length - old_text.length;
             const length_diff_abs = Math.abs(length_diff);
             const type = input_event.inputType.toLocaleLowerCase();
-            console.log(type, this.selection[0], length_diff);
             let mutations = [];
             const replacing_selection = this.selection[0] !=
                 this.selection[1];
@@ -3402,21 +4023,8 @@ class HighlightTextAreaSource extends abstract_highlight_text_entry_source_1.Abs
                     type: highlighter_1.HighlightTextEntryMutationType.change,
                 });
             }
-            this.content_parser.update_content(mutations);
-            this.highlighter.update_content(mutations);
-            check_for_scroll_size_change();
+            this.update_content(mutations);
         });
-        // watch outside changes
-        // const element_input_callback = (event: Event) => {
-        //     const new_text: string = text_area_element.value;
-        //     this.text_node.nodeValue = new_text;
-        //     this.value = new_text;
-        //     this.content_parser.update_content();
-        //     this.highlighter.update_content();
-        // };
-        // bind check if form or event changes textarea contents
-        // for (let event_name of ['input', 'change'])
-        //     this.bindings.bind_event(this.element, event_name, element_input_callback);
         // sync scroll
         const sync_scroll = () => {
             this.scroll = [
@@ -3431,6 +4039,22 @@ class HighlightTextAreaSource extends abstract_highlight_text_entry_source_1.Abs
         sync_scroll();
     }
     ;
+    update_content(mutations) {
+        this.highlighter.update_content(mutations);
+        // slows things down considerably
+        // if (this.rect.scroll_width != this.element.scrollWidth ||
+        //     this.rect.scroll_height != this.element.scrollHeight)
+        // {
+        //     let rect_copy = Rect.copy(this.rect);
+        //     rect_copy.scroll_width = this.element.scrollWidth;
+        //     rect_copy.scroll_height = this.element.scrollHeight;
+        //     this.on_rect_changed(
+        //         rect_copy,
+        //         false,
+        //         true
+        //     );
+        // }
+    }
     remove() {
         // if (this.t_highlight != null)
         //     this.t_highlight.remove();
@@ -3507,7 +4131,7 @@ class HighlightTextAreaSource extends abstract_highlight_text_entry_source_1.Abs
 exports.HighlightTextAreaSource = HighlightTextAreaSource;
 ;
 
-},{"../../../common/rect":7,"../abstract-highlight-text-entry-source":16,"../highlighter":19}],23:[function(require,module,exports){
+},{"../../../common/rect":7,"../abstract-highlight-text-entry-source":16,"../highlighter":19}],25:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Utils = void 0;

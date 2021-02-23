@@ -1,6 +1,8 @@
 import { Bindings } from '../bindings';
 import { HighlightTextAreaSource } from './text-entry-sources/text-area';
 import { HighlightContentParser, Highlighter, HighlightTextEntrySource } from './highlighter';
+import { HighlightInputSource } from './text-entry-sources/input';
+import { HighlightContentEditableSource } from './text-entry-sources/contenteditable';
 
 export class TextEntryHighlighter
 {
@@ -17,6 +19,7 @@ export class TextEntryHighlighter
     {
         // bind highlighter and content parser
         this.content_parser.set_highlighter(highlighter);
+        this.highlighter.set_content_parser(this.content_parser);
         
         // create shadow
         this.root_div = this.document.createElement("div");
@@ -38,11 +41,11 @@ export class TextEntryHighlighter
                 target_element.removeEventListener('keyup', add_interface);
 
                 if (target_element.nodeName == 'INPUT')
-                    return // TODO
+                    this.source = new HighlightInputSource(target_element, polling_interval);
                 else if (target_element.nodeName == 'TEXTAREA')
                     this.source = new HighlightTextAreaSource(target_element, polling_interval);
                 else if (target_element.isContentEditable)
-                    return // TODO
+                    this.source = new HighlightContentEditableSource(target_element, polling_interval);
                 else
                     return;
 
@@ -60,11 +63,8 @@ export class TextEntryHighlighter
                 this.source.init(
                     this.document,
                     this.shadow,
-                    this.content_parser,
                     this.highlighter
                 );
-                this.highlighter.set_text_entry_source(this.source);
-                this.content_parser.set_text_entry_source(this.source);
                 console.log('bound');
             };
             target_element.addEventListener('mouseup', add_interface);
@@ -78,8 +78,6 @@ export class TextEntryHighlighter
         {
             this.source.remove();
             this.source = null;
-            this.highlighter.set_text_entry_source(this.source);
-            this.content_parser.set_text_entry_source(this.source);
             console.log('released');
         }
     }

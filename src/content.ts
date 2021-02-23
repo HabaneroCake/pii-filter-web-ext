@@ -21,6 +21,7 @@ namespace PII_Filter
         protected highlighter:              RangeHighlighter;
         protected content_parser:           BoxHighlightContentParser;
         protected text_entry_highlighter:   TextEntryHighlighter;
+        protected resolver:                 (ranges: Array<BoxIntensityRange>) => void;
 
         constructor()
         {
@@ -55,11 +56,19 @@ namespace PII_Filter
 
             // highlighting and input
             this.highlighter = new RangeHighlighter();
-            this.content_parser = new BoxHighlightContentParser((text:string) => {
-                browser.runtime.sendMessage(null,
-                    new ICommonMessage.TextEntered(text)
-                );
-            });
+            this.content_parser = new BoxHighlightContentParser(
+                (text: string, resolver: (ranges: Array<BoxIntensityRange>) => void) => 
+                {
+                    if (this.resolver == null)
+                    {
+                        this.resolver = resolver;
+                        browser.runtime.sendMessage(null,
+                            new ICommonMessage.TextEntered(text)
+                        );
+                    }
+                    else
+                        console.warn('resolver is not null');
+                });
             this.text_entry_highlighter = new TextEntryHighlighter(
                 document,
                 this.highlighter,
@@ -93,7 +102,7 @@ namespace PII_Filter
         {
             return this.active_element_;
         }
-        protected handle_pii(message: ICommonMessage.NotifyPII)
+        protected async handle_pii(message: ICommonMessage.NotifyPII)
         {
 
             if (!message.ignore_highlight)
@@ -107,8 +116,14 @@ namespace PII_Filter
                         intensity: pii.severity
                     });
                 }
-                // TODO check if request matches update id else discard
-                this.content_parser.set_ranges(ranges);
+                // resolve request
+                if (this.resolver != null)
+                {
+                    this.resolver(ranges);
+                    this.resolver = null;
+                }
+                else
+                    console.warn('resolver null');
             }
         }
     };
@@ -140,7 +155,7 @@ namespace PII_Filter
             });
         }
 
-        protected handle_pii(message: ICommonMessage.NotifyPII)
+        protected async handle_pii(message: ICommonMessage.NotifyPII)
         {
             super.handle_pii(message);
             

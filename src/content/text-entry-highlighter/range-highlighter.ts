@@ -8,22 +8,28 @@ import {
 } from './highlighter'
 
 import { calc_array_diff } from '../../common/array-diff';
-import { HighlightTextEntryMutation } from './highlighter';
+import { HighlightTextEntryMutation, HighlightContentParser, HighlighterRangesConstructor } from './highlighter';
 import { Rect } from '../../common/rect';
 
-
-// import { DOMRectHighlight } from '../../../../../underlines/test';
 
 export class RangeHighlighter implements Highlighter
 {
     protected ranges:               Array<HighlightedRange> = new Array<HighlightedRange>();
+    protected content_parser:       HighlightContentParser
     protected text_entry_source:    HighlightTextEntrySource;
     protected viewport:             HTMLDivElement;
     protected highlights_viewport:  HTMLDivElement;
-    highlights:                     HTMLDivElement;
-    highlights_rect_rel:                Rect = new Rect();
 
-    // protected t_highlight:              DOMRectHighlight;
+    protected content_id:           number;
+    protected active_promise:       Promise<HighlighterRangesConstructor>;
+    
+    highlights:                     HTMLDivElement;
+    highlights_rect_rel:            Rect = new Rect();
+
+    set_content_parser(content_parser: HighlightContentParser): void
+    {
+        this.content_parser = content_parser;
+    }
 
     remove(): void
     {
@@ -47,6 +53,8 @@ export class RangeHighlighter implements Highlighter
             this.highlights.remove();
             this.highlights = null;
         }
+
+        this.active_promise = null;
     }
     update_ranges(ranges: Array<HighlightRange>, render: boolean=true): void
     {
@@ -61,17 +69,11 @@ export class RangeHighlighter implements Highlighter
         if (render)
             this.render();
     }
-    set_ranges(
-        ranges: Array<HighlightRange>,
-        make_highlight: (
-            raw_range: HighlightRange,
-            doc_range: Range
-        ) => DocHighlight
-    ): void
+    set_ranges(ranges_constructor: HighlighterRangesConstructor, adjust_overlapping_ranges: boolean=false): void
     {
         // add / remove only what is necessary
         const result = calc_array_diff<HighlightRange>(
-            ranges,
+            ranges_constructor.ranges,
             this.ranges,
             (lhs: HighlightRange, rhs: HighlightRange): boolean => {
                 return lhs.start == rhs.start &&
@@ -80,7 +82,29 @@ export class RangeHighlighter implements Highlighter
         );
 
         this.remove_ranges(result.removed, false);
-        this.add_ranges(result.added, make_highlight, false)
+        this.add_ranges(
+            {
+                ranges: result.added, 
+                make_highlight: ranges_constructor.make_highlight
+            }, 
+            false
+        );
+
+        if (adjust_overlapping_ranges)
+        {
+            for (let range of result.overlap)
+            {
+                const index: number = this.ranges.findIndex((value: HighlightedRange) => {
+                    return value.start == range.start && value.end == range.end;
+                });
+                if (index > -1)
+                {
+                    range.start =   this.ranges[index].highlight.current_range.start;
+                    range.end =     this.ranges[index].highlight.current_range.end;
+                }
+            }
+        }
+
         this.update_ranges(result.overlap, false);
         this.render();
     }
@@ -100,11 +124,7 @@ export class RangeHighlighter implements Highlighter
             this.render();
     }
     add_ranges(
-        elements: Array<HighlightRange>,
-        make_highlight: (
-            raw_range: HighlightRange,
-            doc_range: Range
-        ) => DocHighlight,
+        ranges_constructor: HighlighterRangesConstructor,
         render: boolean=true
     ): void
     {
@@ -113,10 +133,10 @@ export class RangeHighlighter implements Highlighter
             const text_len: number = this.text_entry_source.value.length;
             let last_insert_index:  number;
             let last_element:       HighlightRange;
-            if (elements.length > 0)
+            if (ranges_constructor.ranges.length > 0)
             {
                 // insert in sorted order
-                for (const added of elements)
+                for (const added of ranges_constructor.ranges)
                 {
                     // skip invalid ranges
                     if (added.start < 0 ||
@@ -140,7 +160,7 @@ export class RangeHighlighter implements Highlighter
                     const highlighted_range: HighlightedRange = {
                         start:      added.start,
                         end:        added.end,
-                        highlight:  make_highlight(
+                        highlight:  ranges_constructor.make_highlight(
                             added,
                             this.text_entry_source.get_range(added.start, added.end)
                         )
@@ -157,8 +177,10 @@ export class RangeHighlighter implements Highlighter
     }
     set_text_entry_source(text_entry_source: HighlightTextEntrySource): void
     {
-        this.text_entry_source = text_entry_source;
         this.remove();
+        
+        this.content_id =           0;
+        this.text_entry_source =    text_entry_source;
 
         if (this.text_entry_source != null)
         {
@@ -179,6 +201,7 @@ export class RangeHighlighter implements Highlighter
                 overflow: hidden;
                 visibility: hidden;
                 pointer-events: none;
+                z-index: 99999;
             `);
             this.highlights.setAttribute('style', `
                 display: block;
@@ -186,6 +209,7 @@ export class RangeHighlighter implements Highlighter
                 overflow: visible;
                 visibility: visible;
                 pointer-events: none;
+                z-index: 99999;
             `);
 
             this.highlights_viewport.appendChild(this.highlights);
@@ -193,10 +217,11 @@ export class RangeHighlighter implements Highlighter
             this.text_entry_source.shadow.appendChild(this.viewport);
             this.update_scroll();
             this.update_layout();
+            this.stage_new_content();
         }
     }
     update_content(mutations: Array<HighlightTextEntryMutation>): void
-    {
+    { // TODO: optimize
         if (this.text_entry_source != null)
         {
             for (const mutation of mutations)
@@ -285,13 +310,61 @@ export class RangeHighlighter implements Highlighter
                                 
                             return true;
                         });
-                        console.log(this.ranges);
                         break;
                     }
                     default: break;
                 }
             }
             this.render();
+            this.stage_new_content();
+        }
+    }
+
+    protected stage_new_content()
+    {
+        this.content_id++;
+        if (this.text_entry_source != null && this.active_promise == null)
+        {
+            const stage_id: number = this.content_id;
+            const source: HighlightTextEntrySource = this.text_entry_source;
+            // sync adjusted range values for comparison on return
+            for (let range of this.ranges)
+            {
+                range.start =   range.highlight.current_range.start;
+                range.end =     range.highlight.current_range.end;
+            }
+            this.active_promise = new Promise<HighlighterRangesConstructor>(
+                (resolve: (ranges_constructor: HighlighterRangesConstructor) => void): void => 
+                { 
+                    this.content_parser.resolve_content(
+                        this.text_entry_source.value,
+                        (ranges_constructor: HighlighterRangesConstructor) => {
+                            resolve(ranges_constructor);
+                        }
+                    );
+                }
+            );
+            this.active_promise.then(
+                (ranges_constructor: HighlighterRangesConstructor) =>
+                {
+                    (async () => {
+                        this.active_promise = null;
+                        if (this.text_entry_source === source)
+                        {
+                            this.set_ranges(ranges_constructor, true);
+                            if (stage_id != this.content_id)
+                            {   // recurse
+                                this.stage_new_content();
+                            }
+                            return ranges_constructor;
+                        }
+                    })();
+                }, 
+                (reason: any) => 
+                { //? necessary?
+
+                }
+            )
         }
     }
 
@@ -316,30 +389,55 @@ export class RangeHighlighter implements Highlighter
             this.highlights_viewport.style.height = `${height_i}px`;
 
             // this.text_entry_source.viewport_i.apply_to_element(this.highlights_viewport, true, true);
-            this.highlights_viewport.style.backgroundColor = 'rgba(0, 255, 0, 0.4)';
-            // if (this.t_highlight != null)
-            //     this.t_highlight.remove();
-
-            // this.t_highlight = new DOMRectHighlight(document, this.text_entry_source.viewport_i, 2);
-            // this.t_highlight.color = [0, 255, 0, 1.0];
+            // this.highlights_viewport.style.backgroundColor = 'rgba(0, 255, 0, 0.4)';
             // this.text_entry_source.viewport_o.apply_position_to_element(this.highlights, true);
             this.update_scroll();
         }
     }
-    update_position(): void
+    async update_position(): Promise<void>
     {
         this.update_rect();
     }
-    update_scroll(): void
+
+    // only render once scroll has settled
+    protected scroll_update_timeout: number;
+    protected rendering_scroll: Promise<void>;
+    async update_scroll(): Promise<void>
     {
+        const render_scroll = () =>
+        {
+            const [scroll_x, scroll_y] = this.text_entry_source.scroll;
+            return this.render().then(
+                () => {
+                    this.rendering_scroll = null;
+                    if (this.text_entry_source != null)
+                    {
+                        const [new_scroll_x, new_scroll_y] = this.text_entry_source.scroll;
+                        if (new_scroll_x != scroll_x || new_scroll_y != scroll_y)
+                        {   // recurse
+                            this.update_scroll();
+                        }
+                    }
+                },
+            )
+        };
+        
         if (this.text_entry_source != null)
         {
+            if (this.scroll_update_timeout != null)
+                window.clearTimeout(this.scroll_update_timeout);
+            
+            this.scroll_update_timeout = window.setTimeout(() => {
+                if (this.rendering_scroll == null)
+                    this.rendering_scroll = render_scroll();
+            }, 500);
+
             const [scroll_x, scroll_y] = this.text_entry_source.scroll;
             this.highlights.style.left = `${-scroll_x}px`;
             this.highlights.style.top = `${-scroll_y}px`;
         }
     }
-    update_layout(): void
+    async update_layout(): Promise<void>
     {
         if (this.text_entry_source != null)
         {
@@ -347,17 +445,98 @@ export class RangeHighlighter implements Highlighter
             this.render();
         }
     }
-    render(): void
-    {
+    // protected last_visible_range: [number, number] = [0, 0];
+    async render(): Promise<void>
+    { // TODO: clean up
+        // const rect_intersects_vp = (rect: DOMRect) =>
+        // {
+        //     const [scroll_x, scroll_y] = this.text_entry_source.scroll;
+        //     return (!(rect.bottom - scroll_y < this.highlights_rect_rel.top ||
+        //         rect.top - scroll_y >  this.highlights_rect_rel.bottom ||
+        //         rect.left - scroll_x > this.highlights_rect_rel.right ||
+        //         rect.right - scroll_x < this.highlights_rect_rel.left));
+        // }
+
+        // if (this.text_entry_source != null)
+        // {
+        //     const ranges_len: number = this.ranges.length;
+        //     let range_extent: [number, number] = [
+        //         Math.min(this.last_visible_range[0], ranges_len-1),
+        //         Math.min(this.last_visible_range[1], ranges_len-1)
+        //     ]
+
+        //     // scroll direction?
+        //     const new_ranges: [number, number] = [null, null];
+        //     const middle_index: number = range_extent[0] + Math.round((range_extent[1]-range_extent[0]) / 2)
+        //     for (let i: number = 0; i < ranges_len; ++i)
+        //     {
+        //         const left_index: number = middle_index - i;
+        //         const right_index: number = middle_index + i;
+        //         let left_range: HighlightedRange, right_range: HighlightedRange;
+        //         if (left_index >= 0)
+        //         {
+        //             left_range = this.ranges[left_index];
+        //             const range_rect: DOMRect = left_range.highlight.document_range.getBoundingClientRect();
+        //             if (rect_intersects_vp(range_rect))
+        //             {
+        //                 new_ranges[0] = new_ranges[0] == null ? left_index : Math.min(new_ranges[0], left_index);
+        //                 new_ranges[1] = new_ranges[1] == null ? left_index : Math.max(new_ranges[1], left_index);
+        //                 left_range.highlight.render(this, this.text_entry_source.document, range_rect);
+        //             }
+        //         }
+        //         if (right_index < ranges_len)
+        //         {
+        //             right_range = this.ranges[right_index];
+        //             const range_rect: DOMRect = right_range.highlight.document_range.getBoundingClientRect();
+        //             if (rect_intersects_vp(range_rect))
+        //             {
+        //                 new_ranges[0] = new_ranges[0] == null ? right_index : Math.min(new_ranges[0], right_index);
+        //                 new_ranges[1] = new_ranges[1] == null ? right_index : Math.max(new_ranges[1], right_index);
+        //                 right_range.highlight.render(this, this.text_entry_source.document, range_rect);
+        //             }
+        //         }
+        //         if (new_ranges[0] != null && new_ranges[1] != null &&
+        //             left_range == null && right_range == null)
+        //             break;
+        //     }
+        //     if (new_ranges[0] != null && new_ranges[1] != null)
+        //     {
+        //         // todo optimize this
+        //         for (let i: number = this.last_visible_range[0];
+        //              i < Math.min(this.last_visible_range[1] + 1, ranges_len); ++i)
+        //         {
+        //             if (i < new_ranges[0] || i > new_ranges[1])
+        //                 this.ranges[i].highlight.remove();
+        //         }
+        //         this.last_visible_range = new_ranges;
+        //     }
+
+            // remove last visible range
+            
+            // console.log(this.last_visible_range)
+
+            // update before range and set limit
+
+            // update range and check if there is limit
+
+            // update after range and set limit
         if (this.text_entry_source != null)
         {
             for (const range of this.ranges)
             {
-                range.highlight.document_range = this.text_entry_source.get_range(
-                    range.highlight.current_range.start,
-                    range.highlight.current_range.end
-                )
-                range.highlight.render(this, this.text_entry_source.document);
+                const [scroll_x, scroll_y] = this.text_entry_source.scroll;
+                const range_rect: DOMRect = range.highlight.document_range.getBoundingClientRect();
+                // if (!(range_rect.bottom - scroll_y < this.highlights_rect_rel.top ||
+                //     range_rect.top - scroll_y >  this.highlights_rect_rel.bottom ||
+                //     range_rect.left - scroll_x > this.highlights_rect_rel.right ||
+                //     range_rect.right - scroll_x < this.highlights_rect_rel.left))
+                {
+                    range.highlight.render(this, this.text_entry_source.document, range_rect);
+                }
+                // else
+                // {
+                //     range.highlight.remove();
+                // }
             }
         }
     }

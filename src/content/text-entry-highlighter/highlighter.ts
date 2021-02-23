@@ -28,7 +28,6 @@ export interface HighlightTextEntrySource
     init(
         document: Document,
         shadow: ShadowRoot,
-        content_parser: HighlightContentParser,
         highlighter: Highlighter
     ): void;
 
@@ -36,11 +35,14 @@ export interface HighlightTextEntrySource
 
     remove(): void;
 };
+
 export interface HighlightContentParser
 {
     set_highlighter(highlighter: Highlighter): void;
-    set_text_entry_source(text_entry_source: HighlightTextEntrySource): void;
-    update_content(mutations: Array<HighlightTextEntryMutation>): void;
+    resolve_content(
+        content: string,
+        resolver: (range_constructor: HighlighterRangesConstructor) => void
+    ): void;
 };
 
 export interface DocHighlight
@@ -49,7 +51,11 @@ export interface DocHighlight
     document_range:                                         Range;
     update_range(range: HighlightRange):                    void;
     adjust_range(start?: number, end?: number):             void;
-    render(highlighter: Highlighter, document: Document):   void;
+    render(
+        highlighter: Highlighter,
+        document: Document,
+        range_rect: DOMRect
+    ):   void;
     remove(): void;
 };
 
@@ -64,36 +70,35 @@ export interface HighlightedRange extends HighlightRange
     highlight:  DocHighlight;
 }
 
+export interface HighlighterRangesConstructor
+{
+    ranges: Array<HighlightRange>,
+    make_highlight: (
+        highlight_range: HighlightRange,
+        doc_range: Range
+    ) => DocHighlight
+};
+
 export interface Highlighter
 {
-    highlights:         HTMLDivElement;
+    highlights:             HTMLDivElement;
     highlights_rect_rel:    Rect;
 
     remove(): void;
-
+    set_content_parser(content_parser: HighlightContentParser): void;
     set_text_entry_source(text_entry_source: HighlightTextEntrySource): void;
     update_ranges(ranges: Array<HighlightRange>, render: boolean): void;
-    set_ranges(
-        ranges: Array<HighlightRange>,
-        make_highlight: (
-            highlight_range: HighlightRange,
-            doc_range: Range
-        ) => DocHighlight
-    ): void;
+    set_ranges(ranges_constructor: HighlighterRangesConstructor, adjust_overlapping_ranges: boolean): void;
     remove_ranges(ranges: Array<HighlightRange>, render: boolean): void;
     add_ranges(
-        ranges: Array<HighlightRange>,
-        make_highlight: (
-            highlight_range: HighlightRange,
-            doc_range: Range
-        ) => DocHighlight,
+        ranges_constructor: HighlighterRangesConstructor,
         render: boolean
     ): void;
 
     update_content(mutations: Array<HighlightTextEntryMutation>): void;
-    update_position(): void;
-    update_scroll(): void;
-    update_layout(): void;
+    update_position(): Promise<void>;
+    update_scroll(): Promise<void>;
+    update_layout(): Promise<void>;
 
-    render(): void;
+    render(): Promise<void>;
 };
