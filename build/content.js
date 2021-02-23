@@ -2838,7 +2838,7 @@ class BoxHighlightRange {
             }, 0);
         }
         this.divs_container.style.left = `${(range_rect.left + window.scrollX) - highlighter.highlights_rect_rel.left}px`;
-        this.divs_container.style.top = `${(range_rect.top + window.scrollY)}px;// - highlighter.highlights_rect_rel.top}px`;
+        this.divs_container.style.top = `${(range_rect.top + window.scrollY) - highlighter.highlights_rect_rel.top}px`;
         const dom_rects = this.document_range.getClientRects();
         while (dom_rects.length > this.divs.length) {
             const element = document.createElement('div');
@@ -3594,31 +3594,35 @@ class HighlightContentEditableSource extends abstract_highlight_text_entry_sourc
     }
     get_range(start_index, end_index) {
         let range = this.document.createRange();
-        let t_range = this.document.createRange();
-        let node = this.element.firstChild;
-        let index_offset = 0;
-        const parse_nodes = (node) => {
-            if (node.firstChild != null)
-                parse_nodes(node.firstChild);
-            else {
-                t_range.selectNode(node);
-                const len = t_range.toString().length;
-                if (index_offset <= start_index && index_offset + len > start_index) {
-                    range.setStart(node, start_index - index_offset);
-                    console.log('set start', node);
-                }
-                if (index_offset <= end_index && index_offset + len >= start_index) {
-                    range.setEnd(node, end_index - index_offset);
-                    console.log('set end', node);
-                    return;
-                }
-                index_offset += len;
-            }
-            if (node.nextSibling != null)
-                parse_nodes(node.nextSibling);
-        };
-        parse_nodes(node);
-        console.log(range);
+        // let t_range: Range = this.document.createRange();
+        // let node: Node = this.element.firstChild;
+        // let index_offset: number = 0;
+        // const parse_nodes = (node: Node) =>
+        // {
+        //     if (node.firstChild != null)
+        //         parse_nodes(node.firstChild);
+        //     else
+        //     {
+        //         t_range.selectNode(node);
+        //         const len: number = t_range.toString().length;
+        //         if (index_offset <= start_index && index_offset + len > start_index)
+        //         {
+        //             range.setStart(node, start_index - index_offset);
+        //             console.log('set start', node);
+        //         }
+        //         if (index_offset <= end_index && index_offset + len >= start_index)
+        //         {
+        //             range.setEnd(node, end_index - index_offset);
+        //             console.log('set end', node);
+        //             return;
+        //         }
+        //         index_offset += len;
+        //     }
+        //     if (node.nextSibling != null)
+        //         parse_nodes(node.nextSibling);
+        // }
+        // parse_nodes(node);
+        // console.log(range);
         return range;
     }
 }
