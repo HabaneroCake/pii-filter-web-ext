@@ -45,23 +45,19 @@ export class BoxHighlightRange implements DocHighlight
         this.update_range(range);
     }
     get document_range()
-    {   // TODO: handle contenteditable, isPointInRange is just used to ignore it atm.
-        if (this.range_adjusted)
+    {   // TODO: handle contenteditable, check below is just used to ignore it atm.
+        if (this.range_adjusted &&
+            (this.containers[0] || this._document_range.startContainer) ==
+            (this.containers[1] || this._document_range.endContainer))
         {
-            if (this._document_range.isPointInRange(
+            this._document_range.setStart(
                 this.containers[0] || this._document_range.startContainer,
-                this.current_range.start))
-                this._document_range.setStart(
-                    this.containers[0] || this._document_range.startContainer,
-                    this.current_range.start
-                );
-            if (this._document_range.isPointInRange(
+                this.current_range.start
+            );
+            this._document_range.setEnd(
                 this.containers[1] || this._document_range.endContainer,
-                this.current_range.end))
-                this._document_range.setEnd(
-                    this.containers[1] || this._document_range.endContainer,
-                    this.current_range.end
-                );
+                this.current_range.end
+            );
             this.range_adjusted = false;
         }
         return this._document_range;
