@@ -38,6 +38,9 @@ export class TextEntryHighlighter
         this.content_parser.set_highlighter(highlighter);
         this.highlighter.set_content_parser(this.content_parser);
         
+        if (document.body.lastElementChild == null)
+            return;
+
         // create shadow
         this.root_div = this.document.createElement("div");
         this.shadow =  this.root_div.attachShadow({mode: 'open'});

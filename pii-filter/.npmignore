@@ -1,0 +1,8 @@
+# source
+src
+
+# node
+node_modules
+
+# etc
+.nyc_output
