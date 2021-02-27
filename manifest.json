@@ -7,20 +7,35 @@
         "48": "assets/logos/a/PIILogo.png",
         "96": "assets/logos/a/PIILogo@2x.png"
     },
+    "browser_specific_settings": {
+        "gecko": {
+            "id": "pii-filter@prolody.com",
+            "strict_min_version": "42.0"
+        }
+    },      
+    "browser_action": {
+        "browser_style": true,
+        "default_popup": "assets/settings.html",
+        "default_icon": {
+          "16": "assets/logos/a/PIILogo.png",
+          "32": "assets/logos/a/PIILogo.png"
+        }
+    },
     "permissions": [
         "tabs",
         "activeTab",
         "<all_urls>",
-        "webNavigation"
+        "webNavigation",
+        "storage"
     ],
-    "background": {
-        "scripts": ["build/service.js"]
-    },
     "web_accessible_resources": [
         "assets/info.png",
         "assets/logos/a/PIIlogo.png",
         "assets/fonts/webfonts/*.*"
     ],
+    "background": {
+        "scripts": ["build/service.js"]
+    },
     "content_scripts": [{
         "matches": ["<all_urls>"],
         "all_frames": true,

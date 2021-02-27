@@ -1,4 +1,4 @@
-import { browser, Runtime } from 'webextension-polyfill-ts';
+import { browser, Runtime, Storage } from 'webextension-polyfill-ts';
 import { PIIFilterInfoOverlay } from './content/pii-filter-info-overlay';
 import { ICommonMessage } from './common/common-messages';
 import { DOMFocusManager } from './content/dom-focus-manager';
@@ -8,6 +8,31 @@ import { RangeHighlighter } from './content/text-entry-highlighter/range-highlig
 import { BoxHighlightContentParser } from './content/text-entry-highlighter/box-highlight-content-parser';
 import { TextEntryHighlighter } from './content/text-entry-highlighter/text-entry-highlighter';
 import { BoxIntensityRange } from './content/text-entry-highlighter/box-highlight-range';
+
+function listen_settings_changed(on_activate: ()=>void, on_pause: ()=>void)
+{
+    // Get settings at start
+    browser.storage.sync.get("active").then(
+        (result: { [s: string]: any; }) => {
+            (result.active || false)? on_activate() : on_pause();
+        }, 
+        (error)=>console.log(`Error: ${error}`)
+    );
+
+    // Listen to main settings changes
+    browser.storage.onChanged.addListener(
+        (changes: { [s: string]: Storage.StorageChange; }, area_name: string) => {
+            let active: boolean = false;
+            let changed_items = Object.keys(changes);
+            if (changed_items.includes('active'))
+                active = changes['active'].newValue;
+            if (active)
+                on_activate();
+            else
+                on_pause();
+        }
+    );
+}
 
 namespace PII_Filter
 {
@@ -23,8 +48,21 @@ namespace PII_Filter
         protected text_entry_highlighter:   TextEntryHighlighter;
         protected resolver:                 (ranges: Array<BoxIntensityRange>) => void;
 
+        protected is_active:                boolean = false;
+
         constructor()
         {
+            listen_settings_changed(
+                () => {
+                    this.is_active = true;
+                    this.activate();
+                },
+                () => {
+                    this.is_active = false;
+                    this.highlighter.clear();
+                    this.pause();
+                }
+            );
             // Listen to focus changes in other frames
             browser.runtime.onMessage.addListener((message: ICommonMessage, sender: Runtime.MessageSender) => {
                 switch(message.type) {
@@ -59,15 +97,13 @@ namespace PII_Filter
             this.content_parser = new BoxHighlightContentParser(
                 (text: string, resolver: (ranges: Array<BoxIntensityRange>) => void) => 
                 {
-                    if (this.resolver == null)
+                    if (this.resolver == null && this.is_active)
                     {
                         this.resolver = resolver;
                         browser.runtime.sendMessage(null,
                             new ICommonMessage.TextEntered(text)
                         );
                     }
-                    else
-                        console.warn('resolver is not null');
                 });
             this.text_entry_highlighter = new TextEntryHighlighter(
                 document,
@@ -104,17 +140,19 @@ namespace PII_Filter
         }
         protected async handle_pii(message: ICommonMessage.NotifyPII)
         {
-
             if (!message.ignore_highlight)
             {
                 let ranges: Array<BoxIntensityRange> = new Array<BoxIntensityRange>();
-                for (const pii of message.pii)
+                if (this.is_active)
                 {
-                    ranges.push({
-                        start: pii.start_pos,
-                        end: pii.end_pos,
-                        intensity: pii.severity
-                    });
+                    for (const pii of message.pii)
+                    {
+                        ranges.push({
+                            start: pii.start_pos,
+                            end: pii.end_pos,
+                            intensity: pii.severity
+                        });
+                    }
                 }
                 // resolve request
                 if (this.resolver != null)
@@ -125,6 +163,18 @@ namespace PII_Filter
                 else
                     console.warn('resolver null');
             }
+        }
+        protected activate()
+        {
+            if (document.activeElement != null)
+            {
+                const el: HTMLElement = document.activeElement as HTMLElement;
+                el.blur();
+                el.focus();
+            }
+        }
+        protected pause()
+        {
         }
     };
 
@@ -159,9 +209,23 @@ namespace PII_Filter
         {
             super.handle_pii(message);
             
-            this.info_overlay.severity = message.severity_mapping;
-            if (message.pii != null)
-                this.info_overlay.pii = message.pii;
+            if (this.is_active)
+            {
+                this.info_overlay.severity = message.severity_mapping;
+                if (message.pii != null)
+                    this.info_overlay.pii = message.pii;
+            }
+        }
+
+        protected activate()
+        {
+            super.activate();
+        }
+
+        protected pause()
+        {
+            super.pause();
+            this.info_overlay.hide();
         }
     };
 

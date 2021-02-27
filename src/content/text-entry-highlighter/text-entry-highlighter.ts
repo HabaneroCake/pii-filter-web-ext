@@ -82,7 +82,7 @@ export class TextEntryHighlighter
                     this.shadow,
                     this.highlighter
                 );
-                console.log('bound');
+                // console.log('bound');
             };
             target_element.addEventListener('mouseup', add_interface);
             target_element.addEventListener('keyup', add_interface);
@@ -95,7 +95,7 @@ export class TextEntryHighlighter
         {
             this.source.remove();
             this.source = null;
-            console.log('released');
+            // console.log('released');
         }
     }
 

@@ -86,6 +86,12 @@ export class RangeHighlighter implements Highlighter
         if (render)
             this.render();
     }
+    clear(): void
+    {
+        for (const range of this.ranges)
+            range.highlight.remove();
+        this.ranges = new Array<HighlightedRange>();
+    }
     set_ranges(ranges_constructor: HighlighterRangesConstructor, adjust_overlapping_ranges: boolean=false): void
     {
         // add / remove only what is necessary
@@ -464,7 +470,7 @@ export class RangeHighlighter implements Highlighter
     }
     // protected last_visible_range: [number, number] = [0, 0];
     async render(): Promise<void>
-    { // TODO: clean up
+    { // TODO: clean up and use different data structure 
         // const rect_intersects_vp = (rect: DOMRect) =>
         // {
         //     const [scroll_x, scroll_y] = this.text_entry_source.scroll;

@@ -9,7 +9,6 @@ class Tab {constructor(public callback: message_callback){}};
 export class PIIFilterService
 {
     private pii_filter:     pf.PIIClassifier =  pf.make_pii_classifier(pf.languages.nl.make_lm());
-    private active:         boolean =           true; // will be part of settings
     private endpoint_map:   Map<number, Tab> =  new Map<number, Tab>()
 
     constructor()
@@ -78,46 +77,43 @@ export class PIIFilterService
                         }
                         // classify text
                         case ICommonMessage.Type.TEXT_ENTERED: {
-                            if (this.active)
-                            {
-                                next_text = (message as ICommonMessage.TextEntered).text;
-                                let result = this.pii_filter.classify(next_text);
+                            next_text = (message as ICommonMessage.TextEntered).text;
+                            let result = this.pii_filter.classify(next_text);
 
-                                if (sender.frameId != 0)
-                                {
-                                    browser.tabs.sendMessage(
-                                        tab.id,
-                                        new ICommonMessage.NotifyPII(
-                                            result.severity,
-                                            result.pii,
-                                            false
-                                        ),
-                                        {frameId: sender.frameId}
-                                    );
-                                    // send to main frame
-                                    browser.tabs.sendMessage(
-                                        tab.id,
-                                        new ICommonMessage.NotifyPII(
-                                            result.severity,
-                                            result.pii,
-                                            true
-                                        ),
-                                        {frameId: 0}
-                                    );
-                                }
-                                else
-                                {
-                                    // send to frame
-                                    browser.tabs.sendMessage(
-                                        tab.id,
-                                        new ICommonMessage.NotifyPII(
-                                            result.severity,
-                                            result.pii,
-                                            false
-                                        ),
-                                        {frameId: 0}
-                                    );
-                                }
+                            if (sender.frameId != 0)
+                            {
+                                browser.tabs.sendMessage(
+                                    tab.id,
+                                    new ICommonMessage.NotifyPII(
+                                        result.severity,
+                                        result.pii,
+                                        false
+                                    ),
+                                    {frameId: sender.frameId}
+                                );
+                                // send to main frame
+                                browser.tabs.sendMessage(
+                                    tab.id,
+                                    new ICommonMessage.NotifyPII(
+                                        result.severity,
+                                        result.pii,
+                                        true
+                                    ),
+                                    {frameId: 0}
+                                );
+                            }
+                            else
+                            {
+                                // send to frame
+                                browser.tabs.sendMessage(
+                                    tab.id,
+                                    new ICommonMessage.NotifyPII(
+                                        result.severity,
+                                        result.pii,
+                                        false
+                                    ),
+                                    {frameId: 0}
+                                );
                             }
                             break;
                         }

@@ -110,7 +110,7 @@ export interface Highlighter
         ranges_constructor: HighlighterRangesConstructor,
         render: boolean
     ): void;
-
+    clear(): void;
     update_content(mutations: Array<HighlightTextEntryMutation>): void;
     update_position(): Promise<void>;
     update_scroll(): Promise<void>;
