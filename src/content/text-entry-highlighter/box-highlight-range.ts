@@ -1,3 +1,19 @@
+// Text highlighting utilities for textarea, input, and contenteditable elements
+// Copyright (C) 2021 habanerocake
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 import {
     Highlighter, HighlightRange,
 } from './highlighter'
@@ -29,17 +45,23 @@ export class BoxHighlightRange implements DocHighlight
         this.update_range(range);
     }
     get document_range()
-    {
+    {   // TODO: handle contenteditable, isPointInRange is just used to ignore it atm.
         if (this.range_adjusted)
         {
-            this._document_range.setStart(
+            if (this._document_range.isPointInRange(
                 this.containers[0] || this._document_range.startContainer,
-                this.current_range.start
-            );
-            this._document_range.setEnd(
+                this.current_range.start))
+                this._document_range.setStart(
+                    this.containers[0] || this._document_range.startContainer,
+                    this.current_range.start
+                );
+            if (this._document_range.isPointInRange(
                 this.containers[1] || this._document_range.endContainer,
-                this.current_range.end
-            );
+                this.current_range.end))
+                this._document_range.setEnd(
+                    this.containers[1] || this._document_range.endContainer,
+                    this.current_range.end
+                );
             this.range_adjusted = false;
         }
         return this._document_range;
@@ -55,7 +77,7 @@ export class BoxHighlightRange implements DocHighlight
         start_container: Node=this.document_range.endContainer,
         end_container: Node=this.document_range.endContainer
     ): void
-    {   // TODO (cb?)
+    {
         this.current_range.start = start;
         this.current_range.end = end;
         this.containers = [start_container, end_container];
@@ -63,7 +85,6 @@ export class BoxHighlightRange implements DocHighlight
     }
     render(highlighter: Highlighter, document: Document, range_rect: DOMRect): void
     {
-        console.log(range_rect, this.document_range);
         if (this.divs_container == null)
         {
             this.divs_container = document.createElement('div');

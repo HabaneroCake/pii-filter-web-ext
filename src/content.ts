@@ -129,7 +129,7 @@ namespace PII_Filter
     };
 
     /**
-     * Top level frame (for drawing overlays)
+     * Top level frame (for drawing top level overlays)
      */
     export class Top extends Frame
     {

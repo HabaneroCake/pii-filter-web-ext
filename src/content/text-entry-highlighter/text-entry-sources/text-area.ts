@@ -1,3 +1,19 @@
+// Text highlighting utilities for textarea, input, and contenteditable elements
+// Copyright (C) 2021 habanerocake
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 import { AbstractHighlightTextEntrySource } from '../abstract-highlight-text-entry-source';
 import { Rect } from '../../../common/rect';
 import { HighlightTextEntryMutationType, HighlightTextEntryMutation } from '../highlighter';
@@ -259,7 +275,7 @@ export class HighlightTextAreaSource extends AbstractHighlightTextEntrySource
         this.mirror.style.paddingBottom =   this.computed_style.paddingBottom;
 
         this.viewport_i =               Rect.copy(this.viewport_o);
-        if (true) //! TODO: check if firefox
+        if (true) //! TODO: check if firefox when building for multiple browsers
         {
             const pd_l:     number =    parseFloat(this.computed_style.paddingLeft);
             const pd_t:     number =    parseFloat(this.computed_style.paddingTop);
@@ -291,7 +307,7 @@ export class HighlightTextAreaSource extends AbstractHighlightTextEntrySource
         this.mirror.style.border =         'none';
 
         // set defaults
-        if (!all.has('white-space')) //!? TODO
+        if (!all.has('white-space')) //!?
             this.mirror.style.whiteSpace =   'pre-wrap';
         if (!all.has('word-wrap'))
             this.mirror.style.wordWrap =     'break-word';

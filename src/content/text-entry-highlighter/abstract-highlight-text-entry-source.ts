@@ -1,6 +1,22 @@
+// Text highlighting utilities for textarea, input, and contenteditable elements
+// Copyright (C) 2021 habanerocake
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 import { Rect } from '../../common/rect';
 import { Highlighter, HighlightTextEntrySource } from './highlighter';
-import { Bindings } from '../bindings';
+import { Bindings } from './bindings';
 import { ElementObserver } from '../element_observer';
 
 export abstract class AbstractHighlightTextEntrySource implements HighlightTextEntrySource
@@ -23,7 +39,7 @@ export abstract class AbstractHighlightTextEntrySource implements HighlightTextE
     ) {}
 
 
-    //! only allow init once
+    //! TODO: only allow init once
     init(
         document: Document,
         shadow: ShadowRoot,

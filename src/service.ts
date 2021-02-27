@@ -3,8 +3,6 @@ import { ICommonMessage } from './common/common-messages';
 
 import * as pf from 'pii-filter';
 
-// TODO: check if window close event automatically calls tabs.onRemoved
-
 type message_callback = (message: ICommonMessage, sender: Runtime.MessageSender) => void;
 class Tab {constructor(public callback: message_callback){}};
 

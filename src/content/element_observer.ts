@@ -1,4 +1,4 @@
-import { Bindings } from './bindings';
+import { Bindings } from './text-entry-highlighter/bindings';
 import { Rect } from '../common/rect';
 
 class StyleCalculator
