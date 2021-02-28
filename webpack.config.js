@@ -1,4 +1,21 @@
+const { fstat } = require('fs');
 const path = require('path');
+const fs = require('fs');
+
+const background_top = `<!DOCTYPE html>
+
+<html>
+    <head>
+        <meta charset="utf-8">
+    </head>
+    <body>
+
+`;
+
+const background_bottom = `
+    </body>
+</html>
+`;
 
 module.exports = {
     mode: 'production',
@@ -45,6 +62,24 @@ module.exports = {
             },
         },
     },
-    // plugins: [new JSONSplitPlugin()],
-    // plugins: [],
+    plugins: [
+        {   // post build: export background page
+            apply: (compiler) => {
+                compiler.hooks.afterEmit.tap('AfterEmitPlugin', (compilation) => {
+                    const assets = compilation.getAssets();
+                    let script_tags = '';
+                    for (const asset of assets)
+                    {
+                        if (/^service-(?:.*?).js$/.test(asset.name))
+                            script_tags += `        <script type="module" src="build/${asset.name}"></script>\r\n`;
+                    }
+                    fs.writeFile(
+                        'background.html',
+                        background_top + script_tags + background_bottom,
+                        (err) => console.log(err)
+                    )
+                });
+            }
+        }
+    ],
 };
