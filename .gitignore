@@ -16,3 +16,6 @@ ignore/
 
 # build
 build/
+
+# generated background script
+background.html
