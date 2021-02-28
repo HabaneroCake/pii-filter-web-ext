@@ -6,7 +6,7 @@
         "target": "esnext",
         "moduleResolution": "node",
         "sourceMap": true,
-        "outDir": "build_service",
+        "outDir": "build",
         "allowJs": true, 
         "checkJs": false,
         "declaration": true,
