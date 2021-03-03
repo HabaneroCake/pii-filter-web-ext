@@ -6,6 +6,8 @@ import * as pf from 'pii-filter';
 type message_callback = (message: ICommonMessage, sender: Runtime.MessageSender) => void;
 class Tab {constructor(public callback: message_callback){}};
 
+const WELL_FORMED_OVERRIDE: boolean = true;
+
 export class PIIFilterService
 {
     private pii_filter:     pf.PIIClassifier =  pf.make_pii_classifier(pf.languages.nl.make_lm());
@@ -78,7 +80,7 @@ export class PIIFilterService
                         // classify text
                         case ICommonMessage.Type.TEXT_ENTERED: {
                             next_text = (message as ICommonMessage.TextEntered).text;
-                            let result = this.pii_filter.classify(next_text);
+                            let result = this.pii_filter.classify(next_text, WELL_FORMED_OVERRIDE);
 
                             if (sender.frameId != 0)
                             {
