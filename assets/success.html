@@ -2,25 +2,116 @@
 <html>
     <head>
         <meta charset="utf-8">
-        <title>Successfully loaded PII-Filter add-on</title>
+        <title>PII-Filter Geladen</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" type="text/css" href="fonts/Montserrat/fonts/webfonts/Montserrat.css">
         <style>
+            * {
+                user-select:        none;
+                font-family:        'Montserrat', sans-serif;
+                font-size:          medium;
+            }
             body {
-                font-family:        Arial, Helvetica, sans-serif;
-                font-size:          large;
-                text-align:         center;
                 padding:            0px;
                 margin:             0px;
-                background-color:   white;
             }
             img {
-                width:              150px;
+                pointer-events:     none;
+            }
+            h1 {
+                font-size:          45pt;
+                color:              rgb(0, 30, 60);
+            }
+            p {
+                font-family:        'Montserrat', sans-serif;
+                margin-left:        5px;
+                margin-right:       5px;
+                margin-top:         10px;;
+                margin-bottom:      15px;
+            }
+            .nice-bg {
+                background-color:   rgb(210, 220, 220);
+            }
+            .padding-5px {
+                padding:            5px;
+            }
+            .padding-10px {
+                padding:            10px;
+            }
+            .nice-bg-light {
+                background-color:   rgb(238, 238, 238);
+            }
+            .center-flex {
+                display:            flex;
+                justify-content:    center;
+            }
+            .evenly-flex {
+                display:            flex;
+                justify-content:    space-evenly;
+            }
+            .outlined {
+                border-left:        1px solid rgb(237, 237, 237);
+                border-right:       1px solid rgb(237, 237, 237);
+                border-top:         3px solid rgb(250, 250, 250);
+            }
+            .page-container {
+                padding:            50px;
+                min-width:          500px;
+                max-width:          600px;
+                background-color:   white;
+            }
+            .i-100pxh {
+                height:             100px;
+            }
+            .i-inline {
+                display:            inline;
+            }
+            .logo-negative-margin {
+                margin-bottom: -10px;
+            }
+            .preview-container {
+                overflow: hidden;
+            }
+            .fix-preview {
+                position:           relative;
+                object-fit:         cover;
+                left:               -2%;
+                width:              102%;
+                margin-bottom:      -5px;
             }
         </style>
     </head>
-    <body>
-        <h2>PII Filter: Klaar voor gebruik</h2>
-        <p>Activeer/ deactiveer PII Filter door rechtsboven in de toolbar op het slotje te klikken en dan "Actief" aan te vinken:</p>
-        <img src="toolbar.png">
+    <body class='center-flex nice-bg'>
+        <div class='page-container'>
+            <img class='i-100pxh i-inline logo-negative-margin' src="logos/a/PIIlogo512.png">
+            <h1 class='i-inline'>Filter</h1>
+            <div></div>
+            <div class='outlined padding-5px'>
+                <p>
+                    Bedankt voor het uitproberen van het PII-Filter.
+                    U kunt deze activeren door rechtsboven in de toolbar op het slotje te klikken en vervolgens het PII-Filter op actief te zetten:
+                </p>
+                <div class='evenly-flex nice-bg-light padding-10px'>
+                    <img class='i-100pxh' src="menu_1.png">
+                    <img class='i-100pxh' src="menu_2.png">
+                </div>
+            </div>
+            <div class='outlined padding-5px'>
+                <p>Indien u gebruik wilt maken van de experimentele markeringen binnen de ondersteunde tekstvelden kunt u deze ook activeren:</p>
+                <div class='center-flex nice-bg-light padding-10px'>
+                    <img class='i-100pxh' src="menu_3.png">
+                </div>
+                <p>
+                    Deze add-on is nog experimenteel. Vragen, opmerkingen, of ervaringen mag u delen via een issue op <a href='https://github.com/prolody/pii-filter-web-ext'>onze Github</a>.
+                </p>
+                <p>
+                    Het PII-Filter is een <a href='https://www.sidnfonds.nl/projecten/pii-filter'>SIDN pioniersproject</a>.
+                </p>
+            </div>
+            <div class='outlined preview-container'>
+                <img class='fix-preview' src='preview.gif'>
+            </div>
+            <div class='outlined'></div>
+        </div>
     </body>
 </html>
