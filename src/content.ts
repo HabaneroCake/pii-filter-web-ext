@@ -12,9 +12,9 @@ import { BoxIntensityRange } from './content/text-entry-highlighter/box-highligh
 function listen_setting<T>(id: string, def: T, on_changed: (new_value: T) => void)
 {
     // Get settings at start
-    browser.storage.sync.get("active").then(
+    browser.storage.sync.get({[id]: def}).then(
         (result: { [s: string]: any; }) => {
-            on_changed(Reflect.get(result, id) || def);
+            on_changed(result[id]);
         }, 
         (error)=>console.log(`Error: ${error}`)
     );
@@ -68,6 +68,7 @@ namespace PII_Filter
                 false,
                 (new_value: boolean) => {
                     this.highlighter_active = new_value;
+                    console.log(this.highlighter_active);
                     if (!new_value)
                         this.highlighter.clear();
                 }
