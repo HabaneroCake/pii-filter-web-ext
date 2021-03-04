@@ -9,12 +9,12 @@ import { BoxHighlightContentParser } from './content/text-entry-highlighter/box-
 import { TextEntryHighlighter } from './content/text-entry-highlighter/text-entry-highlighter';
 import { BoxIntensityRange } from './content/text-entry-highlighter/box-highlight-range';
 
-function listen_settings_changed(on_activate: ()=>void, on_pause: ()=>void)
+function listen_setting<T>(id: string, def: T, on_changed: (new_value: T) => void)
 {
     // Get settings at start
     browser.storage.sync.get("active").then(
         (result: { [s: string]: any; }) => {
-            (result.active || false)? on_activate() : on_pause();
+            on_changed(Reflect.get(result, id) || def);
         }, 
         (error)=>console.log(`Error: ${error}`)
     );
@@ -22,14 +22,8 @@ function listen_settings_changed(on_activate: ()=>void, on_pause: ()=>void)
     // Listen to main settings changes
     browser.storage.onChanged.addListener(
         (changes: { [s: string]: Storage.StorageChange; }, area_name: string) => {
-            let active: boolean = false;
-            let changed_items = Object.keys(changes);
-            if (changed_items.includes('active'))
-                active = changes['active'].newValue;
-            if (active)
-                on_activate();
-            else
-                on_pause();
+            if (Object.keys(changes).includes(id))
+                on_changed(changes[id].newValue);
         }
     );
 }
@@ -48,19 +42,34 @@ namespace PII_Filter
         protected text_entry_highlighter:   TextEntryHighlighter;
         protected resolver:                 (ranges: Array<BoxIntensityRange>) => void;
 
-        protected is_active:                boolean = false;
+        protected active:                   boolean = false;
+        protected highlighter_active:       boolean = false;
 
         constructor()
         {
-            listen_settings_changed(
-                () => {
-                    this.is_active = true;
-                    this.activate();
-                },
-                () => {
-                    this.is_active = false;
-                    this.highlighter.clear();
-                    this.pause();
+            listen_setting<boolean>(
+                'active',
+                false,
+                (new_value: boolean) => {
+                    this.active = new_value;
+                    if (new_value)
+                    {
+                        this.activate();
+                    } 
+                    else 
+                    {
+                        this.highlighter.clear();
+                        this.pause();
+                    }
+                }
+            );
+            listen_setting<boolean>(
+                'highlights-active',
+                false,
+                (new_value: boolean) => {
+                    this.highlighter_active = new_value;
+                    if (!new_value)
+                        this.highlighter.clear();
                 }
             );
             // Listen to focus changes in other frames
@@ -97,7 +106,7 @@ namespace PII_Filter
             this.content_parser = new BoxHighlightContentParser(
                 (text: string, resolver: (ranges: Array<BoxIntensityRange>) => void) => 
                 {
-                    if (this.resolver == null && this.is_active)
+                    if (this.resolver == null && this.active)
                     {
                         this.resolver = resolver;
                         browser.runtime.sendMessage(null,
@@ -143,7 +152,7 @@ namespace PII_Filter
             if (!message.ignore_highlight)
             {
                 let ranges: Array<BoxIntensityRange> = new Array<BoxIntensityRange>();
-                if (this.is_active)
+                if (this.active && this.highlighter_active)
                 {
                     for (const pii of message.pii)
                     {
@@ -209,7 +218,7 @@ namespace PII_Filter
         {
             super.handle_pii(message);
             
-            if (this.is_active)
+            if (this.active)
             {
                 this.info_overlay.severity = message.severity_mapping;
                 if (message.pii != null)
