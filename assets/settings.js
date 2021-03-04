@@ -7,9 +7,9 @@ class SettingsElement {
     }
 
     load_from_storage() {
-        browser.storage.sync.get(this.id)
+        browser.storage.sync.get({[this.id]: this.def})
         .then(
-            result => this.set_value(result[this.id] || this.def),
+            result => this.set_value(result[this.id]),
             error => console.log(`Error: ${error}`)
         )
     }
