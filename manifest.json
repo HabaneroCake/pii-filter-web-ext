@@ -2,7 +2,7 @@
     "manifest_version": 2,
     "name": "PII-Filter (NL)",
     "description": "Notifies you if there is an excessive usage of PII in a text field.",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "icons": {
         "48": "assets/logos/a/PIIlogo.png",
         "96": "assets/logos/a/PIIlogo@2x.png"
