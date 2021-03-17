@@ -1,5 +1,7 @@
 # ![PII](https://raw.githubusercontent.com/prolody/piif_web_ext/master/assets/logos/a/PIIlogo.png) Filter Web Extension
 
+> **Please note:** this project is still experimental
+
 ![Preview GIF](https://raw.githubusercontent.com/prolody/piif_web_ext/master/assets/preview.gif)
 
 This project aims to build a personally identifiable information (PII) filter for users of 
