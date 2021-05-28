@@ -2,12 +2,12 @@
 
 > **Please note:** this project is still experimental
 
-![Preview GIF](https://raw.githubusercontent.com/prolody/piif_web_ext/master/assets/preview.gif)
+![Preview GIF](https://raw.githubusercontent.com/HabaneroCake/pii-filter-web-ext/master/assets/preview.gif)
 
 This project aims to build a personally identifiable information (PII) filter for users of 
 the internet (currently only Dutch supported). This repository contains the web-extension code for the PII Filter.
 
-See [this repository](https://github.com/prolody/piif) for the datasets and npm module.
+See [this repository](https://github.com/HabaneroCake/pii-filter) for the datasets and npm module.
 
 ## Current Limitations:
 - Only tracks text entered in the field which has focus. (previously filled fields are ignored until focused)
